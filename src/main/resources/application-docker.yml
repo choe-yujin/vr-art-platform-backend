@@ -1,0 +1,18 @@
+# ===============================================
+# = DOCKER-SPECIFIC CONFIGURATION
+# = This file is activated by the 'docker' profile
+# ===============================================
+
+spring:
+  datasource:
+    # URL, username, password는 모두 docker-compose.yml의 환경 변수로부터 주입됩니다.
+    # 따라서 여기서는 드라이버 클래스만 명시합니다.
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    properties:
+      hibernate:
+        # Docker 로그에서 SQL을 보기 좋게 출력합니다.
+        format_sql: true
+
+# ai.server.url 설정 또한 docker-compose.yml에서 환경 변수로 주입되므로
+# 여기서는 완전히 제거하여 혼란을 방지합니다.

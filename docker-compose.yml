@@ -1,0 +1,46 @@
+services:
+  postgres:
+    # (FIX) PostGIS가 포함된 공식 이미지로 변경합니다.
+    # postgis/postgis 이미지는 PostgreSQL과 PostGIS를 모두 포함합니다.
+    image: postgis/postgis:16-3.4
+    # 참고: 글을 쓰는 시점에 16-3.5.3에 해당하는 공식 태그가 아직 없다면,
+    # 가장 가까운 최신 버전(예: 16-3.4)을 사용하거나 직접 빌드할 수 있습니다.
+    # 기능적으로는 거의 동일하게 동작합니다.
+
+    container_name: bauhaus-postgres
+    environment:
+      # .env 파일에서 값을 읽어옵니다.
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  app:
+    build: .
+    container_name: bauhaus-backend
+    environment:
+      # 1. 프로필을 'docker'로 활성화합니다.
+      - SPRING_PROFILES_ACTIVE=docker
+
+      # 2. Docker 내부 네트워크를 사용하여 DB에 연결합니다.
+      #    서비스 이름 'postgres'를 호스트 이름으로 사용합니다.
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+
+      # 3. postgres 서비스와 동일한 변수 이름을 사용합니다.
+      - SPRING_DATASOURCE_USERNAME=${POSTGRES_USER}
+      - SPRING_DATASOURCE_PASSWORD=${POSTGRES_PASSWORD}
+
+      # 4. .env 파일의 AI 서버 URL 값을 그대로 전달합니다.
+      - AI_SERVER_URL=${AI_SERVER_URL}
+    ports:
+      - "8888:8888"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
