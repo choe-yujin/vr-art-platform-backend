@@ -38,6 +38,3 @@ out/
 
 # Ignore environment files with secrets
 .env
-
-# (NEW) Ignore local-specific configuration files
-application-local.yml
