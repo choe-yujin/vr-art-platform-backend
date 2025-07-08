@@ -16,3 +16,10 @@ spring:
 
 # ai.server.url 설정 또한 docker-compose.yml에서 환경 변수로 주입되므로
 # 여기서는 완전히 제거하여 혼란을 방지합니다.
+
+# (✨ 핵심 해결책 1) Docker 환경에서 사용할 커스텀 속성 오버라이드
+app:
+  qr:
+    # Docker 컨테이너 내부의 절대 경로로 지정합니다.
+    # 이 경로는 Dockerfile에서 생성하고 권한을 부여한 경로와 일치해야 합니다.
+    local-path: /app/static-files/qr-images

@@ -35,3 +35,13 @@ ai:
 cors:
   # Comma-separated list of allowed frontend origins.
   allowed-origins: http://localhost:3000,http://127.0.0.1:3000
+
+app:
+  qr:
+    # 로컬 개발 환경에서 사용할 기본 경로
+    local-path: "src/main/static-files/qr-images"
+    size: 300
+    format: "PNG"
+  web-ar:
+    base-url: "https://bauhaus.shop/ar/view"
+
