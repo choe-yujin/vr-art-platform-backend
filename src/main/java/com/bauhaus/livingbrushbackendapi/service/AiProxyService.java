@@ -42,7 +42,7 @@ public class AiProxyService {
     private final UserRepository userRepository;
     private final RestTemplate restTemplate;
 
-    @Value("${ai.server.url:http://127.0.0.1:58021}")
+    @Value("${ai.server.url}")
     private String aiServerUrl;
 
     private enum AiApiEndpoint {

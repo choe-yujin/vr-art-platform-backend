@@ -27,14 +27,7 @@ spring:
 # Default AI server URL (can be overridden by profiles or environment variables)
 ai:
   server:
-    url: ${AI_SERVER_URL:http://127.0.0.1:58021}
-
-# ===============================================
-# = CORS Configuration
-# ===============================================
-cors:
-  # Comma-separated list of allowed frontend origins.
-  allowed-origins: http://localhost:3000,http://127.0.0.1:3000
+    url: ${AI_SERVER_URL}
 
 app:
   qr:

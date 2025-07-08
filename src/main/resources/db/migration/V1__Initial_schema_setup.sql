@@ -22,7 +22,7 @@ CREATE TYPE user_mode AS ENUM ('vr', 'ar', 'artist');
 CREATE TYPE visibility_type AS ENUM ('PRIVATE', 'PUBLIC');
 CREATE TYPE media_type AS ENUM ('image', 'video', 'audio', 'glb');
 -- ai_request_logs 테이블에서 사용될 ENUM 타입 추가
-CREATE TYPE ai_request_type AS ENUM ('generate_brush', 'generate_palette', 'stt');
+CREATE TYPE ai_request_type AS ENUM ('brush', 'palette', 'chatbot');
 
 
 -- ========== 공통 트리거 함수 ==========
