@@ -1,20 +1,27 @@
 # =================================================================
 # Stage 1: Build the application using Gradle
 # =================================================================
-FROM gradle:8.14.2-jdk17 AS builder
+FROM gradle:8.5.0-jdk17 AS builder
 
 WORKDIR /app
 
 # Optimize Docker layer caching
-COPY build.gradle settings.gradle ./
+COPY build.gradle settings.gradle gradlew ./
 COPY gradle ./gradle
-RUN gradle dependencies --no-daemon
+
+# ==================== ✨ 핵심 수정 사항 ✨ ====================
+# gradlew 스크립트에 실행 권한을 부여합니다.
+# 이 과정이 없으면 Docker 환경에서 './gradlew' 명령어를 찾지 못하는 오류가 발생합니다.
+RUN chmod +x ./gradlew
+# ============================================================
+
+RUN ./gradlew dependencies --no-daemon
 
 # Copy the rest of the source code
 COPY . .
 
 # Build the application JAR
-RUN gradle clean bootJar --no-daemon
+RUN ./gradlew clean bootJar --no-daemon
 
 # =================================================================
 # Stage 2: Create the final, minimal production image
@@ -26,12 +33,16 @@ WORKDIR /app
 # Create a non-root user and group for security
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
-# (FIX) Install necessary packages AS ROOT, BEFORE switching user.
+# Install necessary packages AS ROOT, BEFORE switching user.
 RUN apk add --no-cache curl
 
+# 런타임에 생성될 파일들을 저장할 디렉토리를 만들고,
+# 비-루트 사용자인 'appuser'에게 쓰기 권한을 부여합니다.
+RUN mkdir -p /app/static-files/qr-images \
+             /app/static-files/thumbnails && \
+    chown -R appuser:appgroup /app/static-files
+
 # Healthcheck to ensure the application is running correctly
-# This also needs to be defined before switching user if it needs root access,
-# but curl itself doesn't, so its position is flexible.
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD curl -f http://localhost:8888/api/ai/health || exit 1
 

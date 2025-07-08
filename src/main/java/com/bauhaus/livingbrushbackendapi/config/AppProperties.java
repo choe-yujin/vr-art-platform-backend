@@ -23,17 +23,17 @@ public class AppProperties {
     @Setter
     public static class Qr {
         @NotBlank
-        private String localPath = "src/main/static-files/qr-images";
+        private String localPath;
         @Positive
-        private int size = 300;
+        private int size;
         @NotBlank
-        private String format = "PNG";
+        private String format;
     }
 
     @Getter
     @Setter
     public static class WebAr {
         @NotBlank
-        private String baseUrl = "https://bauhaus.shop/ar/view";
+        private String baseUrl;
     }
 }

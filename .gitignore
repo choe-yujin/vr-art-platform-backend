@@ -1,44 +1,40 @@
-HELP.md
-.gradle
+# .gitignore
+
+# Build artifacts
 build/
-!gradle/wrapper/gradle-wrapper.jar
-!**/src/main/**/build/
-!**/src/test/**/build/
+.gradle/
 
-### STS ###
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-bin/
-!**/src/main/**/bin/
-!**/src/test/**/bin/
-
-### IntelliJ IDEA ###
-.idea
-*.iws
+# IDE files
+.idea/
 *.iml
+*.iws
 *.ipr
 out/
-!**/src/main/**/out/
-!**/src/test/**/out/
-
-### NetBeans ###
-/nbproject/private/
-/nbbuild/
-/dist/
-/nbdist/
-/.nb-gradle/
-
-### VS Code ###
 .vscode/
+.sts4-cache/
+.springBeans
 
-# Ignore environment files with secrets
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Log files
+*.log
+*.log.*
+
+# ##############################################
+# ## SENSITIVE & DYNAMIC FILES
+# ##############################################
+
+# Ignore all environment-specific application properties.
+# A non-sensitive template file (e.g., application-template.yml) should be committed instead.
+application-*.yml
+
+# Ignore environment variable files.
 .env
 
-
+# Ignore user-generated content that should not be in version control.
+# This includes dynamically created QR images.
 src/main/static-files/
-src/main/resources/application-local.yml
+
+HELP.md
