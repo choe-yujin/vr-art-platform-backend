@@ -28,9 +28,10 @@ public class AiRequestLog {
     private User user;
 
     // (FIX 2) PostgreSQL의 네이티브 ENUM 타입('ai_request_type')과 정확하게 매핑합니다.
+    // JPA가 이 enum을 DB에 저장할 때, 순서(숫자)가 아닌 이름(문자열)으로 저장하도록 설정합니다.
     @Enumerated(EnumType.STRING)
     @Column(name = "request_type", nullable = false, columnDefinition = "ai_request_type")
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM) // Hibernate 6+에서 네이티브 ENUM을 위한 어노테이션
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private RequestType requestType;
 
     @Column(name = "request_text", columnDefinition = "TEXT")
