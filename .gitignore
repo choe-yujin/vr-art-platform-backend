@@ -38,3 +38,7 @@ out/
 
 # Ignore environment files with secrets
 .env
+
+
+src/main/static-files/
+src/main/resources/application-local.yml
