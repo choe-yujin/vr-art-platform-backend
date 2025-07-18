@@ -45,7 +45,7 @@ public class ArtworkResponse {
                 .title(artwork.getTitle())
                 .description(artwork.getDescription())
                 .glbUrl(artwork.getGlbUrl())
-                .artistNickname(artwork.getUser().getNickname()) // 연관된 User 엔티티에서 닉네임 가져오기
+                .artistNickname(artwork.getUser().getUsername()) // 연관된 User 엔티티에서 사용자명 가져오기
                 .thumbnailUrl(thumbUrl)
                 .build();
     }
