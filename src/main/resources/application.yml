@@ -36,5 +36,5 @@ app:
     size: 300
     format: "PNG"
   web-ar:
-    base-url: "https://bauhaus.shop/ar/view"
+    base-url: "https://livingbrush.shop/ar/view"
 
