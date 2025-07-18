@@ -59,6 +59,26 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * IllegalArgumentException 처리
+     * Google ID Token 형식 오류 등에서 발생합니다.
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    protected ResponseEntity<ErrorResponse> handleIllegalArgumentException(
+            IllegalArgumentException e, HttpServletRequest request) {
+        log.warn("Invalid argument: {}", e.getMessage());
+        
+        String message = "유효하지 않은 토큰 형식입니다. 올바른 Google ID Token을 제공해주세요.";
+        
+        ErrorResponse errorResponse = ErrorResponse.of(
+                message,
+                "INVALID_TOKEN_FORMAT",
+                request.getRequestURI()
+        );
+        
+        return new ResponseEntity<>(errorResponse, HttpStatus.BAD_REQUEST);
+    }
+
+    /**
      * 작품 미발견 예외 특별 처리
      * 더 구체적인 에러 코드와 로깅이 필요한 경우 사용합니다.
      */

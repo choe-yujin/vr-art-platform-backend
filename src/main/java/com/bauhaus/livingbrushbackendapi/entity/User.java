@@ -1,23 +1,30 @@
 package com.bauhaus.livingbrushbackendapi.entity;
 
+import com.bauhaus.livingbrushbackendapi.entity.enumeration.UserRole;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.DynamicUpdate;
 
-import java.time.OffsetDateTime;
+import java.time.LocalDateTime;
 
+/**
+ * 사용자 엔티티
+ * 
+ * Google OAuth 기반 사용자 정보를 관리합니다.
+ * 
+ * @author Bauhaus Team
+ * @since 1.0
+ */
 @Entity
-// (FIX 1) DB의 UNIQUE 제약조건을 엔티티에 명시하여 일관성을 유지합니다.
 @Table(name = "users", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"provider", "provider_user_id"})
+        @UniqueConstraint(columnNames = "google_id"),
+        @UniqueConstraint(columnNames = "email")
 })
-@Getter // @Data 대신 @Getter, @Setter를 사용하여 안정성을 높입니다.
-@Setter
+@Getter
 @Builder
-@NoArgsConstructor
-@AllArgsConstructor
-// (FIX 2) DB의 DEFAULT 값을 활용하기 위해 DynamicInsert/Update를 사용합니다.
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 @DynamicInsert
 @DynamicUpdate
 public class User {
@@ -27,43 +34,88 @@ public class User {
     @Column(name = "user_id")
     private Long userId;
 
-    @Column(name = "nickname", nullable = false, length = 50)
-    private String nickname;
+    @Column(name = "google_id", length = 255)
+    private String googleId;
 
-    @Column(name = "email", length = 255)
+    @Column(name = "email", nullable = false, length = 255)
     private String email;
 
-    @Column(name = "provider", nullable = false, length = 20)
-    private String provider;
+    @Column(name = "username", nullable = false, length = 50)
+    private String username;
 
-    @Column(name = "provider_user_id", nullable = false, length = 255)
-    private String providerUserId;
+    @Column(name = "profile_image_url", length = 500)
+    private String profileImageUrl;
 
-    // (FIX 3) 'role' 필드를 String 대신 Enum으로 관리하여 타입 안전성을 확보합니다.
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false)
     private UserRole role;
 
-    // (FIX 4) 'current_mode' 필드도 Enum으로 관리합니다.
-    @Enumerated(EnumType.STRING)
-    @Column(name = "current_mode")
-    private UserMode currentMode;
+    @Column(name = "is_active", nullable = false)
+    @Builder.Default
+    private Boolean isActive = true;
 
-    // (FIX 5) DB의 'TIMESTAMP WITH TIME ZONE'과 호환되는 OffsetDateTime을 사용합니다.
-    // 또한, DB의 DEFAULT NOW()와 트리거를 신뢰하기 위해 JPA의 자동 생성을 비활성화합니다.
-    @Column(name = "created_at", nullable = false, updatable = false,
-            columnDefinition = "TIMESTAMP WITH TIME ZONE DEFAULT NOW()")
-    private OffsetDateTime createdAt;
+    @Column(name = "last_login_at")
+    private LocalDateTime lastLoginAt;
 
-    @Column(name = "updated_at", nullable = false,
-            columnDefinition = "TIMESTAMP WITH TIME ZONE DEFAULT NOW()")
-    private OffsetDateTime updatedAt;
+    @Column(name = "created_at", nullable = false, updatable = false)
+    @Builder.Default
+    private LocalDateTime createdAt = LocalDateTime.now();
 
-    public enum UserRole {
-        artist, visitor
+    @Column(name = "updated_at", nullable = false)
+    @Builder.Default
+    private LocalDateTime updatedAt = LocalDateTime.now();
+
+    // 사용자 설정과의 관계 (1:1)
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private UserSetting userSetting;
+
+    /**
+     * Google ID 업데이트
+     */
+    public void updateGoogleId(String googleId) {
+        this.googleId = googleId;
+        this.updatedAt = LocalDateTime.now();
     }
 
-    public enum UserMode {
-        artist, visitor
+    /**
+     * 프로필 정보 업데이트
+     */
+    public void updateProfile(String username, String profileImageUrl) {
+        if (username != null && !username.trim().isEmpty()) {
+            this.username = username;
+        }
+        if (profileImageUrl != null && !profileImageUrl.trim().isEmpty()) {
+            this.profileImageUrl = profileImageUrl;
+        }
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 마지막 로그인 시간 업데이트
+     */
+    public void updateLastLoginAt(LocalDateTime lastLoginAt) {
+        this.lastLoginAt = lastLoginAt;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 사용자 설정 업데이트
+     */
+    public void updateUserSetting(UserSetting userSetting) {
+        this.userSetting = userSetting;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * 사용자 활성화 상태 변경
+     */
+    public void updateActiveStatus(boolean isActive) {
+        this.isActive = isActive;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 }

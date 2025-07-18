@@ -24,31 +24,55 @@ repositories {
 }
 
 dependencies {
+    // Spring Boot Core
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.boot:spring-boot-starter-validation'  // Bean Validation 추가
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
     
-    // PostgreSQL + JPA 추가
+    // Spring Security (OAuth2 Client 제거)
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    
+    // Google ID Token 검증
+    implementation 'com.google.api-client:google-api-client:2.7.0'
+    implementation 'com.google.auth:google-auth-library-oauth2-http:1.30.0'
+    implementation 'com.google.http-client:google-http-client-gson:1.45.1'
+    
+    // PostgreSQL + JPA
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     runtimeOnly 'org.postgresql:postgresql'
     
+    // H2 Database (개발/테스트용)
+    runtimeOnly 'com.h2database:h2'
+    
+    // JWT Token Processing
+    implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
+    runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'
+    runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'
+    
+    // Lombok
     compileOnly 'org.projectlombok:lombok'
-    developmentOnly 'org.springframework.boot:spring-boot-devtools'
     annotationProcessor 'org.projectlombok:lombok'
+    
+    // Development
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+    
+    // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
-    // Springdoc OpenAPI (Swagger 3.0) - Spring Boot 3.5.x 호환 버전
+    // API Documentation (Swagger 3.0)
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.7.0'
 
-    // Database Migration Tool
+    // Database Migration
     implementation 'org.flywaydb:flyway-core'
-    implementation 'org.flywaydb:flyway-database-postgresql' // PostgreSQL용 드라이버
+    implementation 'org.flywaydb:flyway-database-postgresql'
 
     // QR Code Generation
     implementation 'com.google.zxing:core:3.5.3'
     implementation 'com.google.zxing:javase:3.5.3'
 
+    // JSON Processing
     implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
 }
 
