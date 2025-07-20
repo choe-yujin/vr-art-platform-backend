@@ -13,24 +13,26 @@ public class SwaggerConfig {
 
     @Bean
     public OpenAPI openAPI() {
+        // 1. API 정보를 설정합니다.
         Info info = new Info()
-                .title("Living Brush API Document")
+                .title("Livingbrush API Document")
                 .version("v1.0.0")
-                .description("리빙 브러쉬 프로젝트의 API 명세서입니다.");
+                .description("Livingbrush 프로젝트의 API 명세서입니다.");
 
-        // [강화] JWT 인증을 위한 Security Scheme 설정
+        // 2. JWT 인증 방식을 위한 SecurityScheme을 정의합니다.
         String jwtSchemeName = "jwtAuth";
+        SecurityScheme securityScheme = new SecurityScheme()
+                .name(jwtSchemeName)
+                .type(SecurityScheme.Type.HTTP) // HTTP 방식
+                .scheme("bearer") // bearer 토큰 방식을 사용
+                .bearerFormat("JWT"); // 토큰 형식은 JWT
+
+        // 3. 모든 API에 전역적으로 인증을 적용하기 위한 SecurityRequirement를 추가합니다.
         SecurityRequirement securityRequirement = new SecurityRequirement().addList(jwtSchemeName);
-        Components components = new Components()
-                .addSecuritySchemes(jwtSchemeName, new SecurityScheme()
-                        .name(jwtSchemeName)
-                        .type(SecurityScheme.Type.HTTP) // HTTP 타입
-                        .scheme("bearer") // bearer-token 방식
-                        .bearerFormat("JWT")); // 토큰 형식
 
         return new OpenAPI()
-                .info(info)
+                .components(new Components().addSecuritySchemes(jwtSchemeName, securityScheme))
                 .addSecurityItem(securityRequirement)
-                .components(components);
+                .info(info);
     }
 }
