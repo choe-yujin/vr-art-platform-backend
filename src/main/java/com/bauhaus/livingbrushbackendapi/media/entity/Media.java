@@ -48,7 +48,7 @@ public class Media extends BaseEntity {
     private Artwork artwork;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "media_type", nullable = false)
+    @Column(name = "media_type", nullable = false, columnDefinition = "media_type")
     private MediaType mediaType;
 
     @Column(name = "file_url", nullable = false, length = 2048)
@@ -61,7 +61,7 @@ public class Media extends BaseEntity {
     private String thumbnailUrl;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "visibility", nullable = false)
+    @Column(name = "visibility", nullable = false, columnDefinition = "visibility_type")
     private VisibilityType visibility;
 
     // ====================================================================

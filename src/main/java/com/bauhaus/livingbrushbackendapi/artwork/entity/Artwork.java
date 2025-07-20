@@ -67,7 +67,7 @@ public class Artwork extends BaseEntity {
     private Media thumbnailMedia;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "visibility", nullable = false)
+    @Column(name = "visibility", nullable = false, columnDefinition = "visibility_type")
     private VisibilityType visibility;
 
     @Column(name = "price_cash", precision = 10, scale = 2)
