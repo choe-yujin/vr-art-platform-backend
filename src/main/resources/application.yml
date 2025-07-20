@@ -1,69 +1,62 @@
 # ===============================================
-# = COMMON CONFIGURATION (BASECAMP)
-# = Default settings for all environments
+# =         MASTER CONFIGURATION (TEMPLATE)
+# = 모든 환경의 기반이 되는 기본 설정입니다.
 # ===============================================
 
 server:
-  port: 8888 # Default server port
+  port: 8888
 
 spring:
-  # PostgreSQL Database Configuration
   datasource:
-    url: jdbc:postgresql://localhost:5432/${POSTGRES_DB:bauhaus_db}
-    username: ${POSTGRES_USER:bauhaus_user}
-    password: ${POSTGRES_PASSWORD:test1234}
+    url: jdbc:postgresql://localhost:5432/${POSTGRES_DB}
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
     driver-class-name: org.postgresql.Driver
-    
+
   jpa:
-    open-in-view: false # Recommended for performance
+    open-in-view: false
     hibernate:
-      # 개발 환경에서는 엔티티 변경사항을 자동으로 DB에 반영
-      ddl-auto: update
+      ddl-auto: validate
     properties:
       hibernate:
-        # N+1 문제 완화를 위한 기본 배치 사이즈 설정
         default_batch_fetch_size: 100
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+
   flyway:
-    # Flyway를 활성화하여 데이터베이스 스키마 변경을 관리합니다.
     enabled: true
     baseline-on-migrate: true
-    baseline-version: 1
-    baseline-description: "Initial schema setup"
-# Google OAuth Configuration for Android Apps
-google:
-  oauth:
-    android:
-      client-id: "670557844107-ppfpdsdoc24quf5l7qjekaosabid751t.apps.googleusercontent.com"
-    # ID Token 검증을 위한 설정
-    token-verification:
-      audience: "670557844107-ppfpdsdoc24quf5l7qjekaosabid751t.apps.googleusercontent.com"
-      issuer: "https://accounts.google.com"
 
-# Default AI server URL (can be overridden by profiles or environment variables)
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            scope:
+              - email
+              - profile
+          meta:
+            client-id: ${META_APP_ID}
+            client-secret: ${META_APP_SECRET}
+            scope:
+              - user_profile
+        provider:
+          meta:
+            user-info-uri: ${META_GRAPH_API_URL}/me
+
 ai:
   server:
-    url: ${AI_SERVER_URL:http://localhost:8000}
+    url: ${AI_SERVER_URL}
 
-# JWT Configuration
 jwt:
-  secret: ${JWT_SECRET:LivingBrushSecretKeyForJwtTokenGenerationAndValidation2024!@#}
-  access-token-validity: 1800000   # 30분 (30 * 60 * 1000)
-  refresh-token-validity: 604800000 # 7일 (7 * 24 * 60 * 60 * 1000)
+  secret: ${JWT_SECRET}
+  access-token-validity: 30m
+  refresh-token-validity: 7d
 
 app:
   qr:
-    # 로컬 개발 환경에서 사용할 기본 경로
     local-path: "src/main/static-files/qr-images"
+    web-path: "/qr-images/"
     size: 300
     format: "PNG"
   web-ar:
     base-url: "https://livingbrush.shop/ar/view"
-
-oauth2:
-  providers:
-    google:
-      enabled: true
-      platforms: [vr, ar]
-    facebook:
-      enabled: false  # 나중에 true로 변경

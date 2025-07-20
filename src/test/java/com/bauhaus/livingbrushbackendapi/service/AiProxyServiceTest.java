@@ -1,18 +1,18 @@
 package com.bauhaus.livingbrushbackendapi.service;
 
-import com.bauhaus.livingbrushbackendapi.dto.aiproxy.AiBrushResponse;
-import com.bauhaus.livingbrushbackendapi.dto.aiproxy.AiChatbotResponse;
-import com.bauhaus.livingbrushbackendapi.dto.aiproxy.AiPaletteResponse;
-import com.bauhaus.livingbrushbackendapi.dto.request.BrushGenerateRequest;
-import com.bauhaus.livingbrushbackendapi.dto.request.ChatbotRequest;
-import com.bauhaus.livingbrushbackendapi.dto.request.ColorGenerateRequest;
-import com.bauhaus.livingbrushbackendapi.dto.response.BrushGenerateResponse;
-import com.bauhaus.livingbrushbackendapi.dto.response.ChatbotResponse;
-import com.bauhaus.livingbrushbackendapi.dto.response.ColorGenerateResponse;
-import com.bauhaus.livingbrushbackendapi.entity.AiRequestLog;
-import com.bauhaus.livingbrushbackendapi.entity.User;
+import com.bauhaus.livingbrushbackendapi.ai.dto.AiBrushResponse;
+import com.bauhaus.livingbrushbackendapi.ai.dto.AiChatbotResponse;
+import com.bauhaus.livingbrushbackendapi.ai.dto.AiPaletteResponse;
+import com.bauhaus.livingbrushbackendapi.ai.dto.BrushGenerateRequest;
+import com.bauhaus.livingbrushbackendapi.ai.dto.ChatbotRequest;
+import com.bauhaus.livingbrushbackendapi.ai.dto.ColorGenerateRequest;
+import com.bauhaus.livingbrushbackendapi.ai.dto.BrushGenerateResponse;
+import com.bauhaus.livingbrushbackendapi.ai.dto.ChatbotResponse;
+import com.bauhaus.livingbrushbackendapi.ai.dto.ColorGenerateResponse;
+import com.bauhaus.livingbrushbackendapi.ai.entity.AiRequestLog;
+import com.bauhaus.livingbrushbackendapi.user.entity.User;
 import com.bauhaus.livingbrushbackendapi.exception.AiServerConnectionException;
-import com.bauhaus.livingbrushbackendapi.repository.UserRepository;
+import com.bauhaus.livingbrushbackendapi.user.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -64,8 +64,8 @@ class AiProxyServiceTest {
     void setUp() {
         ReflectionTestUtils.setField(aiProxyService, "aiServerUrl", TEST_AI_SERVER_URL);
 
-        mockUser = new User();
-        ReflectionTestUtils.setField(mockUser, "userId", TEST_USER_ID);
+        mockUser = mock(User.class);
+        when(mockUser.getUserId()).thenReturn(TEST_USER_ID);
 
         mockInitialLog = AiRequestLog.builder().logId(100L).build();
 
