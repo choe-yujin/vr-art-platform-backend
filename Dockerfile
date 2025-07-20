@@ -1,64 +1,54 @@
+# Dockerfile (모든 환경 공통 - 최종 버전)
+
 # =================================================================
 # Stage 1: Build the application using Gradle
 # =================================================================
 FROM gradle:8.5.0-jdk17 AS builder
-# 환경 변수들은 배포 시 주입
-ENV META_APP_ID=""
-ENV META_APP_SECRET=""
-ENV DATABASE_URL=""
-ENV JWT_SECRET=""
-
 WORKDIR /app
 
-# Optimize Docker layer caching
+# 1. Gradle 설정 파일만 먼저 복사하여 의존성 레이어를 캐싱합니다.
 COPY build.gradle settings.gradle gradlew ./
 COPY gradle ./gradle
-
-# ==================== ✨ 핵심 수정 사항 ✨ ====================
-# gradlew 스크립트에 실행 권한을 부여합니다.
-# 이 과정이 없으면 Docker 환경에서 './gradlew' 명령어를 찾지 못하는 오류가 발생합니다.
 RUN chmod +x ./gradlew
-# ============================================================
 
+# 2. 의존성을 먼저 다운로드하여 별도의 레이어로 만듭니다.
 RUN ./gradlew dependencies --no-daemon
 
-# Copy the rest of the source code
-COPY . .
+# 3. 나머지 소스 코드를 복사합니다.
+COPY src ./src
 
-# Build the application JAR
-RUN ./gradlew clean bootJar --no-daemon
+# 4. 애플리케이션을 빌드합니다. Spring Boot의 Layered JAR 기능을 활용합니다.
+RUN ./gradlew bootJar --no-daemon
 
 # =================================================================
 # Stage 2: Create the final, minimal production image
 # =================================================================
 FROM eclipse-temurin:17-jre-alpine
-
 WORKDIR /app
 
-# Create a non-root user and group for security
+# [보안 강화] 애플리케이션 실행을 위한 비-루트(non-root) 사용자를 생성합니다.
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
-# Install necessary packages AS ROOT, BEFORE switching user.
+# [최적화] Spring Boot Layered JAR에서 분리된 레이어들을 복사합니다.
+COPY --from=builder /app/build/libs/app.jar app.jar
+RUN java -Djarmode=layertools -jar app.jar extract
+
+# 각 레이어를 순서대로 복사하고, appuser에게 소유권을 부여합니다.
+COPY --chown=appuser:appgroup dependencies/ ./
+COPY --chown=appuser:appgroup spring-boot-loader/ ./
+COPY --chown=appuser:appgroup snapshot-dependencies/ ./
+COPY --chown=appuser:appgroup application/ ./
+
+# [상태 확인] 애플리케이션이 정상적으로 실행 중인지 확인하는 Health Check
 RUN apk add --no-cache curl
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+  CMD curl -f http://localhost:8888/api/auth/health || exit 1
 
-# 런타임에 생성될 파일들을 저장할 디렉토리를 만들고,
-# 비-루트 사용자인 'appuser'에게 쓰기 권한을 부여합니다.
-RUN mkdir -p /app/static-files/qr-images \
-             /app/static-files/thumbnails && \
-    chown -R appuser:appgroup /app/static-files
-
-# Healthcheck to ensure the application is running correctly
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD curl -f http://localhost:8888/api/ai/health || exit 1
-
-# NOW, switch to the non-root user to run the application securely
+# [보안 강화] 비-루트 사용자로 전환하여 애플리케이션을 실행합니다.
 USER appuser
 
-# Copy the application JAR from the builder stage
-COPY --from=builder /app/build/libs/*.jar app.jar
-
-# Expose the application port (doesn't require root)
+# 애플리케이션 포트를 노출합니다.
 EXPOSE 8888
 
-# Entrypoint to run the application as 'appuser'
-ENTRYPOINT ["java", "-jar", "/app/app.jar"]
+# 최종 컨테이너 실행 명령어
+ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]

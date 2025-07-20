@@ -1,0 +1,30 @@
+# docker-compose.prod.yml (AWS 운영용)
+
+services:
+  app:
+    # Dockerfile로 빌드된 이미지를 ECR 같은 레지스트리에서 가져옵니다.
+    # 예: 123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/livingbrush:latest
+    image: ${ECR_IMAGE_URI}
+    container_name: livingbrush-prod-backend
+    environment:
+      # 운영용 프로필(application-prod.yml)을 활성화합니다.
+      - SPRING_PROFILES_ACTIVE=prod
+      # RDS 접속 정보는 .env.prod 파일에서 주입합니다.
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://${RDS_HOSTNAME}:${RDS_PORT}/${RDS_DB_NAME}
+      - SPRING_DATASOURCE_USERNAME=${RDS_USERNAME}
+      - SPRING_DATASOURCE_PASSWORD=${RDS_PASSWORD}
+      # 나머지 운영에 필요한 환경 변수들
+      - JWT_SECRET=${JWT_SECRET}
+      - META_APP_ID=${META_APP_ID}
+      - META_APP_SECRET=${META_APP_SECRET}
+      - AI_SERVER_URL=${AI_SERVER_URL}
+    # 운영 환경용 환경 변수 파일을 별도로 사용합니다.
+    env_file:
+      - .env.prod
+    ports:
+      # EC2의 80번 포트(HTTP)를 컨테이너의 8888번 포트로 연결합니다.
+      - "80:8888"
+    volumes:
+      # EC2 호스트의 특정 경로와 컨테이너의 static-files를 연결하여 파일을 영속화합니다.
+      - /home/ec2-user/static-files:/app/static-files
+    restart: always
