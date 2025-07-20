@@ -37,7 +37,7 @@ public class SecurityConfig {
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
 
-    // [개선] 인증 없이 접근 가능한 경로 목록을 명확하게 재정리
+    // [수정] 인증 없이 접근 가능한 경로 목록에 개발용 API 경로 추가
     private static final String[] PUBLIC_URLS = {
             // --- Basic and Error ---
             "/", "/error",
@@ -47,6 +47,9 @@ public class SecurityConfig {
 
             // --- Authentication ---
             "/api/auth/**", // 로그인, health check 등 인증 관련 모든 경로 포함
+
+            // --- Development ---
+            "/api/dev/**", // 개발용 테스트 API 경로
 
             // --- Static Resources ---
             "/qr-images/**" // QR 코드 이미지 경로
