@@ -30,8 +30,11 @@ Thumbs.db
 # A non-sensitive template file (e.g., application-template.yml) should be committed instead.
 application-*.yml
 
-# Ignore environment variable files.
+# 환경 변수 파일들
 .env
+.env.local
+.env.production
+.env.development
 
 # Ignore user-generated content that should not be in version control.
 # This includes dynamically created QR images.

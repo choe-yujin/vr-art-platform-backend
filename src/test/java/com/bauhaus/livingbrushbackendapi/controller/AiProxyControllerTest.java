@@ -1,12 +1,13 @@
 package com.bauhaus.livingbrushbackendapi.controller;
 
-import com.bauhaus.livingbrushbackendapi.dto.request.BrushGenerateRequest;
-import com.bauhaus.livingbrushbackendapi.dto.request.ChatbotRequest;
-import com.bauhaus.livingbrushbackendapi.dto.request.ColorGenerateRequest;
-import com.bauhaus.livingbrushbackendapi.dto.response.BrushGenerateResponse;
-import com.bauhaus.livingbrushbackendapi.dto.response.ChatbotResponse;
-import com.bauhaus.livingbrushbackendapi.dto.response.ColorGenerateResponse;
-import com.bauhaus.livingbrushbackendapi.dto.response.HealthCheckResponse;
+import com.bauhaus.livingbrushbackendapi.ai.controller.AiProxyController;
+import com.bauhaus.livingbrushbackendapi.ai.dto.BrushGenerateRequest;
+import com.bauhaus.livingbrushbackendapi.ai.dto.ChatbotRequest;
+import com.bauhaus.livingbrushbackendapi.ai.dto.ColorGenerateRequest;
+import com.bauhaus.livingbrushbackendapi.ai.dto.BrushGenerateResponse;
+import com.bauhaus.livingbrushbackendapi.ai.dto.ChatbotResponse;
+import com.bauhaus.livingbrushbackendapi.ai.dto.ColorGenerateResponse;
+import com.bauhaus.livingbrushbackendapi.common.dto.HealthCheckResponse;
 import com.bauhaus.livingbrushbackendapi.exception.AiServerConnectionException;
 import com.bauhaus.livingbrushbackendapi.service.AiProxyService;
 import com.fasterxml.jackson.databind.ObjectMapper;

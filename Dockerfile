@@ -2,6 +2,11 @@
 # Stage 1: Build the application using Gradle
 # =================================================================
 FROM gradle:8.5.0-jdk17 AS builder
+# 환경 변수들은 배포 시 주입
+ENV META_APP_ID=""
+ENV META_APP_SECRET=""
+ENV DATABASE_URL=""
+ENV JWT_SECRET=""
 
 WORKDIR /app
 

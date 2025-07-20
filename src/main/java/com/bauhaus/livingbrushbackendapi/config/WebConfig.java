@@ -1,65 +1,52 @@
 package com.bauhaus.livingbrushbackendapi.config;
 
-import lombok.extern.slf4j.Slf4j;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import java.nio.file.Paths;
+
 /**
- * 웹 설정 클래스
- * 
- * 로컬 개발 환경에서 static-files 서빙과 CORS 설정을 담당합니다.
- * QR 이미지와 샘플 파일들에 대한 HTTP 접근을 가능하게 합니다.
+ * 웹 관련 설정을 통합 관리하는 클래스 (CORS, 정적 리소스 핸들러)
  */
-@Slf4j
 @Configuration
-@Profile("local")
+@RequiredArgsConstructor
 public class WebConfig implements WebMvcConfigurer {
 
-    /**
-     * Static Resource Handler 설정
-     * 
-     * /static-files/** 요청을 src/main/static-files/ 디렉토리로 매핑합니다.
-     * QR 이미지, 샘플 .glb 파일, 썸네일 등에 HTTP로 접근 가능합니다.
-     */
-    @Override
-    public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        log.info("Static resource handlers 설정 중...");
-        
-        // QR 이미지 및 샘플 파일 서빙
-        registry.addResourceHandler("/static-files/**")
-                .addResourceLocations("file:src/main/static-files/")
-                .setCachePeriod(0); // 개발 환경에서는 캐시 비활성화
-        
-        log.info("Static files 매핑 완료: /static-files/** -> file:src/main/static-files/");
-    }
+    private final AppProperties appProperties;
 
     /**
-     * CORS 설정 (개발 환경용)
-     * 
-     * 로컬 개발시 프론트엔드와 백엔드 포트가 다를 때 
-     * CORS 오류를 방지하기 위한 설정입니다.
+     * CORS(Cross-Origin Resource Sharing) 설정을 정의합니다.
+     * 다른 도메인(예: localhost:3000, livingbrush.shop)에서의 API 요청을 허용합니다.
      */
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        log.info("CORS 설정 중 (로컬 개발용)...");
-        
-        registry.addMapping("/api/**")
-                .allowedOriginPatterns("*")
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                .allowedHeaders("*")
-                .allowCredentials(true)
-                .maxAge(3600);
-        
-        // Static files에 대한 CORS 허용
-        registry.addMapping("/static-files/**")
-                .allowedOriginPatterns("*")
-                .allowedMethods("GET")
-                .allowedHeaders("*")
-                .maxAge(3600);
-        
-        log.info("CORS 설정 완료 - 모든 origin 허용 (개발용)");
+        registry.addMapping("/**") // 모든 경로에 대해 CORS 정책 적용
+                .allowedOrigins("http://localhost:3000", "https://livingbrush.shop") // 허용할 출처
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS") // 허용할 HTTP 메소드
+                .allowedHeaders("*") // 모든 요청 헤더 허용
+                .allowCredentials(true) // 쿠키 및 인증 정보 허용
+                .maxAge(3600); // pre-flight 요청의 캐시 시간(초)
+    }
+
+    /**
+     * 정적 리소스(Static Resource) 핸들러를 설정합니다.
+     * 특정 URL 경로로 요청이 오면, 실제 로컬 파일 시스템의 특정 폴더에서 리소스를 찾아 제공합니다.
+     * 이 설정 덕분에 생성된 QR 코드 이미지를 웹 브라우저에서 바로 볼 수 있습니다.
+     */
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        // application.yml에 정의된 웹 경로 (예: /qr-images/)
+        String webPath = appProperties.getQr().getWebPath();
+
+        // application.yml에 정의된 실제 로컬 파일 시스템 경로를 절대 경로로 변환
+        // (예: file:C:/Users/User/Java/project/src/main/static-files/qr-images/)
+        String resourcePath = "file:" + Paths.get(appProperties.getQr().getLocalPath()).toAbsolutePath() + "/";
+
+        // /qr-images/** 로 들어오는 모든 요청을 resourcePath 에서 찾도록 매핑합니다.
+        registry.addResourceHandler(webPath + "**")
+                .addResourceLocations(resourcePath);
     }
 }
