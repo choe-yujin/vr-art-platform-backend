@@ -2,8 +2,9 @@ package com.bauhaus.livingbrushbackendapi.artwork.repository;
 
 import com.bauhaus.livingbrushbackendapi.artwork.entity.Artwork;
 import com.bauhaus.livingbrushbackendapi.artwork.entity.enumeration.VisibilityType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -12,122 +13,134 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * 작품 데이터 접근 리포지토리
+ * Artwork 엔티티 데이터 접근 계층
  *
- * 작품 엔티티에 대한 데이터베이스 접근 기능을 제공합니다.
- * 공개/비공개 작품 조회, 사용자별 작품 관리, 통계 조회 등의 기능을 포함합니다.
+ * V1 DB 스키마에 최적화된 쿼리들을 제공합니다.
+ * 작품의 가시성, 소유권, 미디어 연결 등을 고려한 조회 기능을 지원합니다.
+ *
+ * @author Bauhaus Team
+ * @since 1.0
  */
 @Repository
 public interface ArtworkRepository extends JpaRepository<Artwork, Long> {
 
-    /**
-     * 공개 상태별 작품 목록을 최신순으로 조회합니다.
-     * WebAR 갤러리나 공개 작품 목록 표시에 사용됩니다.
-     *
-     * @param visibility 공개 상태 (PUBLIC/PRIVATE)
-     * @return 작품 목록 (최신순)
-     */
-    List<Artwork> findByVisibilityOrderByCreatedAtDesc(VisibilityType visibility);
+    // ====================================================================
+    // ✨ 기본 조회 쿼리들
+    // ====================================================================
 
     /**
-     * 사용자의 모든 작품을 최신순으로 조회합니다.
-     * AR 앱의 내 작품 갤러리에서 사용됩니다.
-     *
-     * @param userId 사용자 ID
-     * @return 사용자 작품 목록 (최신순)
+     * 특정 사용자의 모든 작품 조회 (페이징 지원)
      */
-    List<Artwork> findByUser_UserIdOrderByCreatedAtDesc(Long userId);
+    Page<Artwork> findByUser_UserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 
     /**
-     * 사용자의 특정 공개 상태 작품만 조회합니다.
-     * AR 앱에서 공개/비공개 작품을 분리해서 보여줄 때 사용됩니다.
-     *
-     * @param userId 사용자 ID
-     * @param visibility 공개 상태
-     * @return 조건에 맞는 작품 목록
+     * 특정 사용자의 특정 가시성 작품 조회
      */
-    // BEFORE: List<Artwork> findByUserIdAndVisibilityOrderByCreatedAtDesc(Long userId, VisibilityType visibility);
     List<Artwork> findByUser_UserIdAndVisibilityOrderByCreatedAtDesc(Long userId, VisibilityType visibility);
 
     /**
-     * 인기 작품 목록을 즐겨찾기 수 기준으로 조회합니다.
-     * 메인 페이지의 인기 작품 섹션에서 사용됩니다.
-     *
-     * @param visibility 공개 상태 (일반적으로 PUBLIC)
-     * @param limit 조회할 작품 수
-     * @return 인기 작품 목록 (즐겨찾기 수 내림차순)
+     * 공개 작품 조회 (페이징 지원, 인기순)
      */
-    @Query("SELECT a FROM Artwork a WHERE a.visibility = :visibility ORDER BY a.favoriteCount DESC, a.createdAt DESC LIMIT :limit")
-    List<Artwork> findTopByVisibilityOrderByFavoriteCountDesc(@Param("visibility") VisibilityType visibility, @Param("limit") int limit);
+    Page<Artwork> findByVisibilityOrderByFavoriteCountDescCreatedAtDesc(VisibilityType visibility, Pageable pageable);
 
     /**
-     * 작품의 조회수를 증가시킵니다.
-     * WebAR이나 AR 앱에서 작품 조회 시 성능 최적화를 위해 벌크 업데이트를 사용합니다.
-     *
-     * @param artworkId 작품 ID
-     * @return 업데이트된 레코드 수
+     * 공개 작품 조회 (페이징 지원, 최신순)
      */
-    @Modifying
-    @Query("UPDATE Artwork a SET a.viewCount = a.viewCount + 1 WHERE a.artworkId = :artworkId")
-    int incrementViewCount(@Param("artworkId") Long artworkId);
+    Page<Artwork> findByVisibilityOrderByCreatedAtDesc(VisibilityType visibility, Pageable pageable);
 
     /**
-     * 작품의 즐겨찾기 수를 증가시킵니다.
-     * 사용자가 즐겨찾기 추가 시 사용됩니다.
-     *
-     * @param artworkId 작품 ID
-     * @return 업데이트된 레코드 수
+     * 공개 작품 조회 (페이징 지원, 조회수순)
      */
-    @Modifying
-    @Query("UPDATE Artwork a SET a.favoriteCount = a.favoriteCount + 1 WHERE a.artworkId = :artworkId")
-    int incrementFavoriteCount(@Param("artworkId") Long artworkId);
+    Page<Artwork> findByVisibilityOrderByViewCountDescCreatedAtDesc(VisibilityType visibility, Pageable pageable);
+
+    // ====================================================================
+    // ✨ 검색 및 필터링 쿼리들
+    // ====================================================================
 
     /**
-     * 작품의 즐겨찾기 수를 감소시킵니다.
-     * 사용자가 즐겨찾기 제거 시 사용됩니다.
-     *
-     * @param artworkId 작품 ID
-     * @return 업데이트된 레코드 수
+     * 제목으로 공개 작품 검색
      */
-    @Modifying
-    @Query("UPDATE Artwork a SET a.favoriteCount = a.favoriteCount - 1 WHERE a.artworkId = :artworkId AND a.favoriteCount > 0")
-    int decrementFavoriteCount(@Param("artworkId") Long artworkId);
+    @Query("SELECT a FROM Artwork a WHERE a.visibility = 'PUBLIC' AND LOWER(a.title) LIKE LOWER(CONCAT('%', :keyword, '%')) ORDER BY a.createdAt DESC")
+    Page<Artwork> searchPublicArtworksByTitle(@Param("keyword") String keyword, Pageable pageable);
 
     /**
-     * 사용자의 총 작품 수를 조회합니다.
-     * 프로필 페이지나 통계 표시에 사용됩니다.
-     *
-     * @param userId 사용자 ID
-     * @return 작품 수
+     * 제목 또는 설명으로 공개 작품 검색
      */
-    long countByUser_UserId(Long userId);
+    @Query("SELECT a FROM Artwork a WHERE a.visibility = 'PUBLIC' AND " +
+           "(LOWER(a.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           "LOWER(a.description) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+           "ORDER BY a.createdAt DESC")
+    Page<Artwork> searchPublicArtworksByTitleOrDescription(@Param("keyword") String keyword, Pageable pageable);
 
     /**
-     * 사용자의 공개 작품 수를 조회합니다.
-     *
-     * @param userId 사용자 ID
-     * @param visibility 공개 상태
-     * @return 공개 작품 수
+     * 특정 사용자의 작품을 제목으로 검색
+     */
+    @Query("SELECT a FROM Artwork a WHERE a.user.userId = :userId AND " +
+           "LOWER(a.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+           "ORDER BY a.createdAt DESC")
+    List<Artwork> searchUserArtworksByTitle(@Param("userId") Long userId, @Param("keyword") String keyword);
+
+    // ====================================================================
+    // ✨ 특수 조회 쿼리들
+    // ====================================================================
+
+    /**
+     * 사용자가 소유한 작품인지 확인
+     */
+    boolean existsByArtworkIdAndUser_UserId(Long artworkId, Long userId);
+
+    /**
+     * 특정 GLB URL을 가진 작품 조회 (중복 방지용)
+     */
+    Optional<Artwork> findByGlbUrl(String glbUrl);
+
+    /**
+     * 썸네일이 없는 공개 작품들 조회 (썸네일 자동 설정용)
+     */
+    @Query("SELECT a FROM Artwork a WHERE a.visibility = 'PUBLIC' AND a.thumbnailMedia IS NULL ORDER BY a.createdAt DESC")
+    List<Artwork> findPublicArtworksWithoutThumbnail();
+
+    /**
+     * 특정 미디어를 썸네일로 사용하는 작품들 조회
+     */
+    List<Artwork> findByThumbnailMedia_MediaId(Long mediaId);
+
+    // ====================================================================
+    // ✨ 통계 및 카운트 쿼리들
+    // ====================================================================
+
+    /**
+     * 사용자의 작품 개수 조회 (가시성별)
      */
     long countByUser_UserIdAndVisibility(Long userId, VisibilityType visibility);
 
     /**
-     * 작품 ID와 사용자 ID로 작품 소유권을 확인합니다.
-     * QR 생성이나 작품 수정 시 권한 검증에 사용됩니다.
-     *
-     * @param artworkId 작품 ID
-     * @param userId 사용자 ID
-     * @return 해당 사용자 소유의 작품 (Optional)
+     * 사용자의 전체 작품 개수 조회
      */
-    // BEFORE: Optional<Artwork> findByArtworkIdAndUserId(Long artworkId, Long userId);
-    Optional<Artwork> findByArtworkIdAndUser_UserId(Long artworkId, Long userId);
+    long countByUser_UserId(Long userId);
 
     /**
-     * 작품이 존재하고 공개 상태인지 확인합니다.
-     * QR 생성 가능 여부 빠른 확인에 사용됩니다.
-     *
-     * @param artworkId 작품 ID
-     * @return 공개 작품 존재 여부
+     * 특정 사용자의 공개 작품 중 즐겨찾기가 많은 상위 작품들
      */
-    boolean existsByArtworkIdAndVisibility(Long artworkId, VisibilityType visibility);
+    @Query("SELECT a FROM Artwork a WHERE a.user.userId = :userId AND a.visibility = 'PUBLIC' " +
+           "ORDER BY a.favoriteCount DESC, a.createdAt DESC")
+    List<Artwork> findTopPublicArtworksByUser(@Param("userId") Long userId, Pageable pageable);
+
+    /**
+     * 최근 인기 작품들 (지난 30일)
+     */
+    @Query("SELECT a FROM Artwork a WHERE a.visibility = 'PUBLIC' AND " +
+           "a.createdAt >= :sinceDate " +
+           "ORDER BY a.favoriteCount DESC, a.viewCount DESC, a.createdAt DESC")
+    List<Artwork> findRecentPopularArtworks(@Param("sinceDate") java.time.LocalDateTime sinceDate, Pageable pageable);
+
+    // ====================================================================
+    // ✨ 관리용 쿼리들
+    // ====================================================================
+
+    /**
+     * GLB URL이 있지만 실제 파일이 없을 수 있는 작품들 조회 (정리용)
+     */
+    @Query("SELECT a FROM Artwork a WHERE a.glbUrl IS NOT NULL AND a.createdAt < :beforeDate ORDER BY a.createdAt")
+    List<Artwork> findPotentialOrphanArtworks(@Param("beforeDate") java.time.LocalDateTime beforeDate);
 }

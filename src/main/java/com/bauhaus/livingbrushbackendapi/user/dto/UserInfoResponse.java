@@ -131,8 +131,7 @@ public class UserInfoResponse {
                 .role(user.getRole().name())
                 .provider(user.getPrimaryProvider().name().toLowerCase())
                 .profileImageUrl(null)
-                // [수정] ZonedDateTime을 LocalDateTime으로 변환합니다.
-                .createdAt(user.getCreatedAt() != null ? user.getCreatedAt().toLocalDateTime() : null)
+                .createdAt(user.getCreatedAt())
                 .lastLoginAt(null)
                 .currentMode(currentMode)
                 .aiConsent(settingsOpt.map(UserSetting::isAiConsent).orElse(false))

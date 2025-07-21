@@ -12,8 +12,10 @@ import lombok.NoArgsConstructor;
 import lombok.ToString;
 import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.util.Objects;
@@ -67,7 +69,8 @@ public class Artwork extends BaseEntity {
     private Media thumbnailMedia;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "visibility", nullable = false)
+    @Column(name = "visibility", nullable = false, columnDefinition = "visibility_type")
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private VisibilityType visibility;
 
     @Column(name = "price_cash", precision = 10, scale = 2)
