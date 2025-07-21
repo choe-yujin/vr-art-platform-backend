@@ -13,6 +13,9 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://${RDS_HOSTNAME}:${RDS_PORT}/${RDS_DB_NAME}
       - SPRING_DATASOURCE_USERNAME=${RDS_USERNAME}
       - SPRING_DATASOURCE_PASSWORD=${RDS_PASSWORD}
+      # AWS S3 Configuration (IAM Role이 있으면 ACCESS_KEY는 불필요)
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
+      - AWS_REGION=${AWS_REGION}
       # 나머지 운영에 필요한 환경 변수들
       - JWT_SECRET=${JWT_SECRET}
       - META_APP_ID=${META_APP_ID}

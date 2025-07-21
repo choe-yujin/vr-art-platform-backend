@@ -45,8 +45,14 @@ public class QrScanServiceImpl implements QrScanService {
             throw new CustomException(ErrorCode.QR_CODE_INACTIVE);
         }
 
-        // 4. 모든 검증을 통과하면 작품 정보를 반환합니다.
-        // [수정] Artwork 엔티티의 필드 이름(artworkId)에 맞는 getter(getArtworkId)를 호출합니다.
+        // 🔥 4. 작품이 공개 상태인지 추가 검증
+        if (!qrCode.getArtwork().isPublic()) {
+            log.warn("비공개 작품의 QR 코드 스캔 시도. Token: {}, 작품 ID: {}", 
+                    qrToken, qrCode.getArtwork().getArtworkId());
+            throw new CustomException(ErrorCode.QR_CODE_INACTIVE);
+        }
+
+        // 5. 모든 검증을 통과하면 작품 정보를 반환합니다.
         log.info("QR 코드 검증 성공. 작품 ID: {}", qrCode.getArtwork().getArtworkId());
         return ArtworkResponse.from(qrCode.getArtwork());
     }

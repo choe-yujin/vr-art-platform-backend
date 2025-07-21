@@ -8,8 +8,10 @@ import com.bauhaus.livingbrushbackendapi.user.entity.User;
 import lombok.*;
 import org.hibernate.annotations.DynamicInsert;
 import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
+import org.hibernate.type.SqlTypes;
 
 import jakarta.persistence.*;
 import java.util.Objects;
@@ -49,6 +51,7 @@ public class Media extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "media_type", nullable = false, columnDefinition = "media_type")
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private MediaType mediaType;
 
     @Column(name = "file_url", nullable = false, length = 2048)
@@ -62,6 +65,7 @@ public class Media extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "visibility", nullable = false, columnDefinition = "visibility_type")
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private VisibilityType visibility;
 
     // ====================================================================

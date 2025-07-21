@@ -9,103 +9,84 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
- * 작품 응답 DTO
+ * 작품 목록 응답 DTO
  *
- * 작품의 상세 정보를 클라이언트에 반환할 때 사용됩니다.
+ * 여러 작품을 조회할 때 사용되는 간소화된 응답 형식입니다.
+ * 목록 조회 시 불필요한 데이터를 제외하여 성능을 최적화합니다.
  *
  * @author Bauhaus Team
  * @since 1.0
  */
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ArtworkResponse {
+public class ArtworkListResponse {
 
     private Long artworkId;
     private Long userId;
     private String userNickname;
     private String title;
-    private String description;
-    private String glbUrl;
-    private Long thumbnailMediaId;
     private String thumbnailUrl;
     private VisibilityType visibility;
     private BigDecimal priceCash;
     private int favoriteCount;
     private int viewCount;
     private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
     
-    // 추가 정보
+    // 추가 정보 (간소화)
     private boolean isPublic;
     private boolean isPaid;
     private boolean hasThumbnail;
-    private String qrImageUrl;  // QR 이미지 URL (생성된 경우만)
 
     @Builder
-    private ArtworkResponse(Long artworkId, Long userId, String userNickname, String title, String description,
-                           String glbUrl, Long thumbnailMediaId, String thumbnailUrl, VisibilityType visibility,
-                           BigDecimal priceCash, int favoriteCount, int viewCount, LocalDateTime createdAt,
-                           LocalDateTime updatedAt, boolean isPublic, boolean isPaid, boolean hasThumbnail,
-                           String qrImageUrl) {
+    private ArtworkListResponse(Long artworkId, Long userId, String userNickname, String title, String thumbnailUrl,
+                               VisibilityType visibility, BigDecimal priceCash, int favoriteCount, int viewCount,
+                               LocalDateTime createdAt, boolean isPublic, boolean isPaid, boolean hasThumbnail) {
         this.artworkId = artworkId;
         this.userId = userId;
         this.userNickname = userNickname;
         this.title = title;
-        this.description = description;
-        this.glbUrl = glbUrl;
-        this.thumbnailMediaId = thumbnailMediaId;
         this.thumbnailUrl = thumbnailUrl;
         this.visibility = visibility;
         this.priceCash = priceCash;
         this.favoriteCount = favoriteCount;
         this.viewCount = viewCount;
         this.createdAt = createdAt;
-        this.updatedAt = updatedAt;
         this.isPublic = isPublic;
         this.isPaid = isPaid;
         this.hasThumbnail = hasThumbnail;
-        this.qrImageUrl = qrImageUrl;
     }
 
     /**
-     * Artwork 엔티티로부터 DTO 생성 (QR URL 포함)
+     * Artwork 엔티티로부터 DTO 생성
      */
-    public static ArtworkResponse from(Artwork artwork) {
-        return from(artwork, null);  // QR URL 없이 생성
-    }
-
-    /**
-     * Artwork 엔티티로부터 DTO 생성 (QR URL 포함)
-     */
-    public static ArtworkResponse from(Artwork artwork, String qrImageUrl) {
-        return ArtworkResponse.builder()
+    public static ArtworkListResponse from(Artwork artwork) {
+        return ArtworkListResponse.builder()
                 .artworkId(artwork.getArtworkId())
                 .userId(artwork.getUser().getUserId())
                 .userNickname(artwork.getUser().getNickname())
                 .title(artwork.getTitle())
-                .description(artwork.getDescription())
-                .glbUrl(artwork.getGlbUrl())
-                .thumbnailMediaId(artwork.getThumbnailMedia() != null ? artwork.getThumbnailMedia().getMediaId() : null)
                 .thumbnailUrl(artwork.getThumbnailMedia() != null ? artwork.getThumbnailMedia().getFileUrl() : null)
                 .visibility(artwork.getVisibility())
                 .priceCash(artwork.getPriceCash())
                 .favoriteCount(artwork.getFavoriteCount())
                 .viewCount(artwork.getViewCount())
                 .createdAt(artwork.getCreatedAt())
-                .updatedAt(artwork.getUpdatedAt())
                 .isPublic(artwork.isPublic())
                 .isPaid(artwork.isPaid())
                 .hasThumbnail(artwork.hasThumbnail())
-                .qrImageUrl(qrImageUrl)  // QR URL 추가
                 .build();
     }
 
     /**
-     * 성공 응답 생성 팩토리 메서드
+     * Artwork 엔티티 리스트를 DTO 리스트로 변환
      */
-    public static ArtworkResponse success(Artwork artwork) {
-        return from(artwork);
+    public static List<ArtworkListResponse> fromList(List<Artwork> artworkList) {
+        return artworkList.stream()
+                .map(ArtworkListResponse::from)
+                .collect(Collectors.toList());
     }
 }
