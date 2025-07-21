@@ -33,6 +33,11 @@ services:
       - META_APP_SECRET=${META_APP_SECRET}
       - DATABASE_URL=${DATABASE_URL}
       - JWT_SECRET=${JWT_SECRET}
+      # AWS S3 Configuration (for when you want to test S3 in Docker)
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
+      - AWS_REGION=${AWS_REGION}
+      # - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}  # Uncomment for S3 testing
+      # - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}  # Uncomment for S3 testing
     env_file:
       - .env
     ports:

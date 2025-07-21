@@ -34,6 +34,16 @@ public enum ErrorCode {
     ARTWORK_NOT_FOUND(HttpStatus.NOT_FOUND, "W001", "해당 작품을 찾을 수 없습니다."), // 'A' 코드가 인증과 겹쳐서 'W'로 변경
     ARTWORK_NOT_PUBLIC(HttpStatus.FORBIDDEN, "W002", "비공개 작품은 QR 코드를 생성할 수 없습니다."),
     FORBIDDEN_ACCESS_ARTWORK(HttpStatus.FORBIDDEN, "W003", "해당 작품에 대한 접근 권한이 없습니다."),
+    ARTWORK_CANNOT_BE_PUBLISHED(HttpStatus.BAD_REQUEST, "W004", "작품을 공개하기 위한 최소 조건을 만족하지 않습니다."),
+    ARTWORK_CREATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "W005", "작품 생성에 실패했습니다."),
+    INVALID_THUMBNAIL_MEDIA(HttpStatus.BAD_REQUEST, "W006", "유효하지 않은 썸네일 미디어입니다."),
+    DUPLICATE_GLB_URL(HttpStatus.CONFLICT, "W007", "이미 사용 중인 GLB 파일 URL입니다."),
+
+    // ========== 미디어 (Media) ==========
+    MEDIA_NOT_FOUND(HttpStatus.NOT_FOUND, "M001", "해당 미디어를 찾을 수 없습니다."),
+    MEDIA_ALREADY_LINKED(HttpStatus.CONFLICT, "M002", "이미 다른 작품에 연결된 미디어입니다."),
+    MEDIA_NOT_OWNED_BY_USER(HttpStatus.FORBIDDEN, "M003", "해당 미디어에 대한 접근 권한이 없습니다."),
+    MEDIA_LINK_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "M004", "미디어 연결에 실패했습니다."),
 
     // ========== QR 코드 (QR Code) ==========
     QR_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "Q001", "QR 코드 이미지 생성에 실패했습니다."),

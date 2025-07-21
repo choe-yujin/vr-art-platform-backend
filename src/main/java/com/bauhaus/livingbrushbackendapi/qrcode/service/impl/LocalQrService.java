@@ -3,7 +3,8 @@ package com.bauhaus.livingbrushbackendapi.qrcode.service.impl;
 import com.bauhaus.livingbrushbackendapi.artwork.entity.Artwork;
 import com.bauhaus.livingbrushbackendapi.artwork.entity.enumeration.VisibilityType;
 import com.bauhaus.livingbrushbackendapi.artwork.repository.ArtworkRepository;
-import com.bauhaus.livingbrushbackendapi.common.service.FileStorageService;
+import com.bauhaus.livingbrushbackendapi.storage.service.FileStorageService;
+import com.bauhaus.livingbrushbackendapi.storage.service.FileStorageContext;
 import com.bauhaus.livingbrushbackendapi.config.AppProperties;
 // [수정] CustomException과 ErrorCode를 임포트합니다.
 import com.bauhaus.livingbrushbackendapi.exception.common.CustomException;
@@ -60,7 +61,7 @@ public class LocalQrService implements QrService {
         String webArUrl = createWebArUrl(artworkId);
 
         // 4. QR 코드 이미지 생성 및 저장
-        String qrImageUrl = createAndStoreQrImage(qrToken, webArUrl);
+        String qrImageUrl = createAndStoreQrImage(qrToken, webArUrl, artwork);
 
         // 5. 새로운 QR 코드 엔티티 저장
         saveNewQrCode(artwork, qrToken, qrImageUrl);
@@ -87,7 +88,7 @@ public class LocalQrService implements QrService {
     /**
      * QR 코드 이미지를 생성하고 파일 시스템에 저장합니다.
      */
-    private String createAndStoreQrImage(UUID qrToken, String webArUrl) {
+    private String createAndStoreQrImage(UUID qrToken, String webArUrl, Artwork artwork) {
         try {
             AppProperties.Qr qrConfig = appProperties.getQr();
 
@@ -100,7 +101,14 @@ public class LocalQrService implements QrService {
             byte[] pngData = pngOutputStream.toByteArray();
 
             String fileName = qrToken.toString() + "." + qrConfig.getFormat().toLowerCase();
-            return fileStorageService.save(pngData, fileName);
+            
+            // 컨텍스트 정보를 포함하여 저장
+            FileStorageContext context = FileStorageContext.forQrCode(
+                    artwork.getUser().getUserId(), 
+                    artwork.getArtworkId()
+            );
+            
+            return fileStorageService.saveWithContext(pngData, fileName, context);
 
         } catch (WriterException | IOException e) {
             log.error("QR 코드 이미지 데이터 생성 또는 저장 중 오류 발생. Token: {}", qrToken, e);

@@ -47,6 +47,7 @@ public class AiRequestLog extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "request_type", nullable = false, columnDefinition = "ai_request_type")
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private AiRequestType requestType;
 
     @Column(name = "request_text", columnDefinition = "TEXT")
