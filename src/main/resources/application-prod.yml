@@ -37,6 +37,14 @@ spring:
   security:
     oauth2:
       client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+            scope:
+              - profile
+              - email
+            redirect-uri: "{baseUrl}/api/auth/oauth2/callback/{registrationId}"
         provider:
           meta:
             authorization-uri: https://www.facebook.com/v18.0/dialog/oauth

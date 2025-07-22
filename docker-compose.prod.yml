@@ -4,7 +4,9 @@ services:
   app:
     # Dockerfile로 빌드된 이미지를 ECR 같은 레지스트리에서 가져옵니다.
     # 예: 123456789012.dkr.ecr.ap-northeast-2.amazonaws.com/livingbrush:latest
-    image: ${ECR_IMAGE_URI}
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: livingbrush-prod-backend
     environment:
       # 운영용 프로필(application-prod.yml)을 활성화합니다.
