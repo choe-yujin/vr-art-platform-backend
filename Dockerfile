@@ -50,4 +50,4 @@ USER appuser
 EXPOSE 8888
 
 # 최종 실행 명령어
-ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
