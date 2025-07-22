@@ -458,6 +458,7 @@ public class ArtworkService {
 
     /**
      * 특정 작품 상세 조회 (공개 작품 또는 소유자만 접근 가능)
+     * QR 코드를 통한 비회원 접근(requestUserId = null) 지원
      */
     public ArtworkResponse getArtworkById(Long artworkId, Long requestUserId) {
         log.info("작품 상세 조회 요청 - 작품 ID: {}, 요청자 ID: {}", artworkId, requestUserId);
@@ -465,13 +466,23 @@ public class ArtworkService {
         Artwork artwork = artworkRepository.findById(artworkId)
                 .orElseThrow(() -> new CustomException(ErrorCode.ARTWORK_NOT_FOUND));
 
-        // 공개 작품이거나 소유자인 경우만 접근 허용
-        if (!artwork.isPublic() && !artwork.isOwnedBy(findUserById(requestUserId))) {
-            throw new CustomException(ErrorCode.FORBIDDEN_ACCESS_ARTWORK);
+        // 요청자 정보 조회 (비회원인 경우 null)
+        User requestUser = null;
+        if (requestUserId != null) {
+            requestUser = findUserById(requestUserId);
+        }
+
+        // 접근 권한 검증: 공개 작품이거나 소유자인 경우만 접근 허용
+        if (!artwork.isPublic()) {
+            // 비공개 작품은 소유자만 접근 가능
+            if (requestUser == null || !artwork.isOwnedBy(requestUser)) {
+                throw new CustomException(ErrorCode.FORBIDDEN_ACCESS_ARTWORK);
+            }
         }
 
         // 조회수 증가 (소유자가 아닌 경우에만)
-        if (!artwork.isOwnedBy(findUserById(requestUserId))) {
+        boolean isOwner = requestUser != null && artwork.isOwnedBy(requestUser);
+        if (!isOwner) {
             incrementViewCount(artworkId);
         }
 
@@ -484,17 +495,18 @@ public class ArtworkService {
     /**
      * 사용자별 작품 목록 조회 (페이징) - 권한에 따른 필터링
      * 본인인 경우 모든 작품, 다른 사용자인 경우 공개 작품만 조회
+     * 비회원(requestUserId = null)인 경우 공개 작품만 조회
      */
     public Page<ArtworkListResponse> getArtworksByUser(Long userId, Long requestUserId, Pageable pageable) {
         log.info("사용자 작품 목록 조회 - 사용자 ID: {}, 요청자 ID: {}", userId, requestUserId);
 
-        // 본인인 경우 모든 작품 조회
+        // 본인인 경우에만 모든 작품 조회 (비회원은 제외)
         if (requestUserId != null && requestUserId.equals(userId)) {
             Page<Artwork> artworks = artworkRepository.findByUser_UserIdOrderByCreatedAtDesc(userId, pageable);
             return artworks.map(ArtworkListResponse::from);
         }
 
-        // 다른 사용자인 경우 공개 작품만 조회
+        // 다른 사용자이거나 비회원인 경우 공개 작품만 조회
         return getPublicArtworksByUser(userId, pageable);
     }
 
