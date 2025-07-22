@@ -29,26 +29,25 @@ WORKDIR /app
 # [보안 강화] 애플리케이션 실행을 위한 비-루트(non-root) 사용자를 생성합니다.
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
-# [최적화] Spring Boot Layered JAR에서 분리된 레이어들을 복사합니다.
+# [최적화] Spring Boot Layered JAR 복사
 COPY --from=builder /app/build/libs/app.jar app.jar
+
+# Layered JAR에서 레이어 분리 (dependencies/, spring-boot-loader/, snapshot-dependencies/, application/ 생성)
 RUN java -Djarmode=layertools -jar app.jar extract
 
-# 각 레이어를 순서대로 복사하고, appuser에게 소유권을 부여합니다.
-COPY --chown=appuser:appgroup dependencies/ ./
-COPY --chown=appuser:appgroup spring-boot-loader/ ./
-COPY --chown=appuser:appgroup snapshot-dependencies/ ./
-COPY --chown=appuser:appgroup application/ ./
+# 생성된 폴더들의 소유권 변경 (COPY → RUN 으로 변경)
+RUN chown -R appuser:appgroup dependencies/ spring-boot-loader/ snapshot-dependencies/ application/
 
-# [상태 확인] 애플리케이션이 정상적으로 실행 중인지 확인하는 Health Check
+# [상태 확인] 애플리케이션 정상 실행 확인용 Health Check 설치 및 설정
 RUN apk add --no-cache curl
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD curl -f http://localhost:8888/api/auth/health || exit 1
 
-# [보안 강화] 비-루트 사용자로 전환하여 애플리케이션을 실행합니다.
+# [보안 강화] 비-루트 사용자로 전환
 USER appuser
 
-# 애플리케이션 포트를 노출합니다.
+# 애플리케이션 포트 노출
 EXPOSE 8888
 
-# 최종 컨테이너 실행 명령어
+# 최종 실행 명령어
 ENTRYPOINT ["java", "org.springframework.boot.loader.launch.JarLauncher"]
