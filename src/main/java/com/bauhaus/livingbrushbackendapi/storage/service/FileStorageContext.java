@@ -29,6 +29,7 @@ public class FileStorageContext {
         // 독립적 파일들
         MEDIA,          // 미디어 파일 (나중에 작품과 연결될 수 있음)
         PROFILE_IMAGE,  // 프로필 이미지
+        PAIRING_QR,     // 계정 페어링용 QR 코드
         
         // 기타
         OTHER
@@ -103,6 +104,17 @@ public class FileStorageContext {
         return FileStorageContext.builder()
                 .fileType(FileType.PROFILE_IMAGE)
                 .userId(userId)
+                .build();
+    }
+    
+    /**
+     * 계정 페어링 QR 코드용 팩토리 메서드
+     */
+    public static FileStorageContext forPairingQr(Long userId) {
+        return FileStorageContext.builder()
+                .fileType(FileType.PAIRING_QR)
+                .userId(userId)
+                .additionalPath("pairing")
                 .build();
     }
 }

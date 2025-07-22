@@ -1,15 +1,13 @@
 package com.bauhaus.livingbrushbackendapi.artwork.dto;
 
-import jakarta.validation.constraints.DecimalMax;
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * 작품 생성 요청 DTO
@@ -55,14 +53,24 @@ public class ArtworkCreateRequest {
      */
     private Long thumbnailMediaId;
 
+    /**
+     * 태그 ID 목록 (선택사항, 최대 5개)
+     * 
+     * 정책: VR 앱에서 30개 태그 중 0~5개 선택
+     */
+    @Size(max = 5, message = "태그는 최대 5개까지 선택할 수 있습니다")
+    private List<@NotNull(message = "태그 ID는 null일 수 없습니다") 
+                 @Positive(message = "태그 ID는 양수여야 합니다") Long> tagIds;
+
     @Builder
     private ArtworkCreateRequest(String title, String description, String glbUrl, 
-                                BigDecimal priceCash, Long thumbnailMediaId) {
+                                BigDecimal priceCash, Long thumbnailMediaId, List<Long> tagIds) {
         this.title = title;
         this.description = description;
         this.glbUrl = glbUrl;
         this.priceCash = priceCash;
         this.thumbnailMediaId = thumbnailMediaId;
+        this.tagIds = tagIds;
     }
 
     /**
@@ -76,16 +84,28 @@ public class ArtworkCreateRequest {
     }
 
     /**
+     * 태그 포함 작품 생성 팩토리 메서드
+     */
+    public static ArtworkCreateRequest withTags(String title, String glbUrl, List<Long> tagIds) {
+        return ArtworkCreateRequest.builder()
+                .title(title)
+                .glbUrl(glbUrl)
+                .tagIds(tagIds)
+                .build();
+    }
+
+    /**
      * 상세 정보 포함 작품 생성 팩토리 메서드
      */
     public static ArtworkCreateRequest withDetails(String title, String description, String glbUrl, 
-                                                  BigDecimal price, Long thumbnailMediaId) {
+                                                  BigDecimal price, Long thumbnailMediaId, List<Long> tagIds) {
         return ArtworkCreateRequest.builder()
                 .title(title)
                 .description(description)
                 .glbUrl(glbUrl)
                 .priceCash(price)
                 .thumbnailMediaId(thumbnailMediaId)
+                .tagIds(tagIds)
                 .build();
     }
 }

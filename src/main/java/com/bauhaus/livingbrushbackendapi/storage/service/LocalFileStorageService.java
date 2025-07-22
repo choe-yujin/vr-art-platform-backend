@@ -141,6 +141,10 @@ public class LocalFileStorageService implements FileStorageService {
                 // profiles/user-123/
                 yield String.format("profiles/user-%d", context.getUserId());
             }
+            case PAIRING_QR -> {
+                // pairing-qr/user-123/
+                yield String.format("pairing-qr/user-%d", context.getUserId());
+            }
             case OTHER -> {
                 // uploads/user-123/ (사용자별로만 분리)
                 yield String.format("uploads/user-%d", context.getUserId());

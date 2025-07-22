@@ -34,6 +34,11 @@ public enum ErrorCode {
     INVALID_PROFILE_IMAGE_FORMAT(HttpStatus.BAD_REQUEST, "U006", "지원하지 않는 프로필 이미지 형식입니다."),
     PROFILE_IMAGE_TOO_LARGE(HttpStatus.BAD_REQUEST, "U007", "프로필 이미지 크기가 너무 큽니다."),
 
+    // ========== 사용자 모드 및 권한 (User Mode & Permission) ==========
+    MODE_SWITCH_NOT_ALLOWED(HttpStatus.FORBIDDEN, "UM001", "모드 전환 권한이 없습니다."),
+    ARTIST_QUALIFICATION_REQUIRED(HttpStatus.FORBIDDEN, "UM002", "아티스트 자격이 필요합니다."),
+    VR_ACCOUNT_LINK_REQUIRED(HttpStatus.FORBIDDEN, "UM003", "VR 계정 연동이 필요합니다."),
+
     // ========== 팔로우 (Follow) ==========
     FOLLOW_SELF_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "R001", "자기 자신을 팔로우할 수 없습니다."), // R은 Relationship
     ALREADY_FOLLOWING(HttpStatus.CONFLICT, "R002", "이미 팔로우하고 있는 사용자입니다."),
@@ -82,6 +87,11 @@ public enum ErrorCode {
     AI_SERVER_COMMUNICATION_ERROR(HttpStatus.SERVICE_UNAVAILABLE, "E001", "AI 서버와 통신하는 중 오류가 발생했습니다."),
     AI_SERVER_RESPONSE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "E002", "AI 서버로부터 유효하지 않은 응답을 받았습니다."),
 
+    // ========== AI 동의 및 권한 (AI Consent) ==========
+    STT_CONSENT_REQUIRED(HttpStatus.FORBIDDEN, "AI001", "AI 기능 사용을 위해 음성 인식(STT) 사용에 동의해주세요."),
+    AI_CONSENT_REQUIRED(HttpStatus.FORBIDDEN, "AI002", "AI 기능 사용에 동의해주세요."),
+    PREMIUM_REQUIRED(HttpStatus.FORBIDDEN, "AI003", "AI 기능은 프리미엄 사용자만 이용 가능합니다."),
+
     // ========== 계정 연동 (Account Linking) ==========
     ACCOUNT_ALREADY_LINKED(HttpStatus.CONFLICT, "L001", "이미 연동된 계정입니다."),
     META_ACCOUNT_ALREADY_TAKEN(HttpStatus.CONFLICT, "L002", "해당 Meta 계정은 이미 다른 사용자와 연동되어 있습니다."),
@@ -92,7 +102,26 @@ public enum ErrorCode {
     LINKING_HISTORY_NOT_FOUND(HttpStatus.NOT_FOUND, "L007", "계정 연동 이력을 찾을 수 없습니다."),
     CANNOT_UNLINK_PRIMARY_ACCOUNT(HttpStatus.BAD_REQUEST, "L008", "기본 계정은 연동 해제할 수 없습니다."),
     META_TOKEN_VALIDATION_FAILED(HttpStatus.UNAUTHORIZED, "L009", "Meta 토큰 검증에 실패했습니다."),
-    GOOGLE_ACCOUNT_REQUIRED(HttpStatus.BAD_REQUEST, "L010", "Google 계정이 필요합니다.");
+    GOOGLE_ACCOUNT_REQUIRED(HttpStatus.BAD_REQUEST, "L010", "Google 계정이 필요합니다."),
+    
+    // ========== 계정 페어링 (Account Pairing) ==========
+    INVALID_PAIRING_CODE(HttpStatus.BAD_REQUEST, "P001", "유효하지 않은 페어링 코드입니다."),
+    PAIRING_CODE_EXPIRED(HttpStatus.GONE, "P002", "페어링 코드가 만료되었습니다."),
+    PAIRING_CODE_ALREADY_USED(HttpStatus.CONFLICT, "P003", "이미 사용된 페어링 코드입니다."),
+    PAIRING_QR_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "P004", "페어링 QR 코드 생성에 실패했습니다."),
+    ACTIVE_PAIRING_EXISTS(HttpStatus.CONFLICT, "P005", "이미 활성화된 페어링 요청이 있습니다."),
+    PAIRING_NOT_FOUND(HttpStatus.NOT_FOUND, "P006", "페어링 요청을 찾을 수 없습니다."),
+    PAIRING_CONFIRMATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "P007", "페어링 확인 처리에 실패했습니다."),
+
+    // ========== 태그 (Tag) ==========
+    TAG_NOT_FOUND(HttpStatus.NOT_FOUND, "T001", "해당 태그를 찾을 수 없습니다."),
+    TAG_ALREADY_EXISTS(HttpStatus.CONFLICT, "T002", "이미 존재하는 태그명입니다."),
+    TAG_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "T003", "작품당 최대 5개의 태그만 선택할 수 있습니다."),
+    INVALID_TAG_ID(HttpStatus.BAD_REQUEST, "T004", "유효하지 않은 태그 ID입니다."),
+    TAG_NAME_TOO_LONG(HttpStatus.BAD_REQUEST, "T005", "태그명은 50자를 초과할 수 없습니다."),
+    TAG_NAME_EMPTY(HttpStatus.BAD_REQUEST, "T006", "태그명을 입력해주세요."),
+    DUPLICATE_TAG_SELECTION(HttpStatus.BAD_REQUEST, "T007", "중복된 태그가 선택되었습니다."),
+    TAG_SAVE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "T008", "태그 저장에 실패했습니다.");
 
 
     private final HttpStatus status;
