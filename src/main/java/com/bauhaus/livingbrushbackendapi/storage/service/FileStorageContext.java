@@ -47,8 +47,9 @@ public class FileStorageContext {
     
     /**
      * 작품 ID (QR_CODE, ARTWORK_GLB 타입일 때 필수)
+     * UUID 문자열 또는 Long 타입 모두 지원
      */
-    private final Long artworkId;
+    private final String artworkId;
     
     /**
      * 미디어 ID (MEDIA 타입일 때 필수)
@@ -63,7 +64,7 @@ public class FileStorageContext {
     /**
      * QR 코드용 팩토리 메서드
      */
-    public static FileStorageContext forQrCode(Long userId, Long artworkId) {
+    public static FileStorageContext forQrCode(Long userId, String artworkId) {
         return FileStorageContext.builder()
                 .fileType(FileType.QR_CODE)
                 .userId(userId)
@@ -72,14 +73,28 @@ public class FileStorageContext {
     }
     
     /**
+     * QR 코드용 팩토리 메서드 (Long 타입 하위 호환성)
+     */
+    public static FileStorageContext forQrCode(Long userId, Long artworkId) {
+        return forQrCode(userId, String.valueOf(artworkId));
+    }
+    
+    /**
      * VR 작품 .glb 파일용 팩토리 메서드
      */
-    public static FileStorageContext forArtworkGlb(Long userId, Long artworkId) {
+    public static FileStorageContext forArtworkGlb(Long userId, String artworkId) {
         return FileStorageContext.builder()
                 .fileType(FileType.ARTWORK_GLB)
                 .userId(userId)
                 .artworkId(artworkId)
                 .build();
+    }
+    
+    /**
+     * VR 작품 .glb 파일용 팩토리 메서드 (Long 타입 하위 호환성)
+     */
+    public static FileStorageContext forArtworkGlb(Long userId, Long artworkId) {
+        return forArtworkGlb(userId, String.valueOf(artworkId));
     }
     
     /**

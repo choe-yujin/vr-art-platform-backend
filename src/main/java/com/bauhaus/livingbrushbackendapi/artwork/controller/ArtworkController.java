@@ -1,6 +1,7 @@
 package com.bauhaus.livingbrushbackendapi.artwork.controller;
 
 import com.bauhaus.livingbrushbackendapi.artwork.dto.ArtworkCreateRequest;
+import com.bauhaus.livingbrushbackendapi.artwork.dto.VrArtworkCreateRequest;
 import com.bauhaus.livingbrushbackendapi.artwork.dto.ArtworkListResponse;
 import com.bauhaus.livingbrushbackendapi.artwork.dto.ArtworkResponse;
 import com.bauhaus.livingbrushbackendapi.artwork.dto.ArtworkUpdateRequest;
@@ -47,8 +48,36 @@ public class ArtworkController {
     // ====================================================================
 
     @Operation(
-            summary = "GLB 파일과 함께 작품 생성",
-            description = "VR에서 3D 모델(.glb)과 메타데이터를 함께 업로드하여 작품을 생성합니다."
+            summary = "VR 작품 업로드 (간편 버전)",
+            description = "VR 기기에서 GLB 파일과 최소 메타데이터로 작품을 생성합니다. 제목은 자동 생성됩니다."
+    )
+    @PostMapping("/vr-upload")
+    public ResponseEntity<ArtworkResponse> createVrArtwork(
+            @Parameter(description = "사용자 ID", required = true) @RequestHeader("X-User-Id") Long userId,
+            @Parameter(description = "GLB 3D 모델 파일", required = true) @RequestPart("glbFile") MultipartFile glbFile,
+            @Parameter(description = "태그 ID 목록 (최대 5개, 선택사항)") @RequestParam(required = false) List<Long> tagIds,
+            @Parameter(description = "썸네일 미디어 ID (선택사항)") @RequestParam(required = false) Long thumbnailMediaId,
+            @Parameter(description = "커스텀 제목 (선택사항)") @RequestParam(required = false) String customTitle,
+            @Parameter(description = "커스텀 설명 (선택사항)") @RequestParam(required = false) String customDescription
+    ) {
+        log.info("VR 작품 업로드 요청 - 사용자: {}, 파일: {}, 태그 수: {}", 
+                userId, glbFile.getOriginalFilename(), tagIds != null ? tagIds.size() : 0);
+
+        // VR 요청 DTO 생성
+        VrArtworkCreateRequest vrRequest = VrArtworkCreateRequest.builder()
+                .tagIds(tagIds)
+                .thumbnailMediaId(thumbnailMediaId)
+                .customTitle(customTitle)
+                .customDescription(customDescription)
+                .build();
+
+        ArtworkResponse response = artworkService.createVrArtwork(userId, vrRequest, glbFile);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+            summary = "GLB 파일과 함께 작품 생성 (상세 버전)",
+            description = "AR 앱이나 웹에서 상세 메타데이터와 함께 작품을 생성합니다."
     )
     @PostMapping("/upload")
     public ResponseEntity<ArtworkResponse> createArtworkWithGlb(

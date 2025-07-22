@@ -140,9 +140,11 @@ public class LocalQrService implements QrService {
 
     /**
      * Web AR 페이지로 연결되는 URL을 생성합니다.
+     * 
+     * 형식: https://livingbrush.shop/ar/view/{artworkId}
      */
     private String createWebArUrl(Long artworkId) {
-        return String.format("%s/%d", appProperties.getWebAr().getBaseUrl(), artworkId);
+        return String.format("%s/ar/view/%d", appProperties.getWebAr().getBaseUrl(), artworkId);
     }
 
     /**

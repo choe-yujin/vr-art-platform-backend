@@ -131,13 +131,13 @@ public class S3FileStorageService implements FileStorageService {
     private String generateContextBasedS3Key(String fileName, FileStorageContext context) {
         return switch (context.getFileType()) {
             case QR_CODE -> {
-                // qr-codes/user-123/artwork-456/filename.png
-                yield String.format("qr-codes/user-%d/artwork-%d/%s", 
+                // qr-codes/user-123/artwork-a1b2c3d4/filename.png
+                yield String.format("qr-codes/user-%d/artwork-%s/%s", 
                         context.getUserId(), context.getArtworkId(), fileName);
             }
             case ARTWORK_GLB -> {
-                // artworks/user-123/artwork-456/filename.glb
-                yield String.format("artworks/user-%d/artwork-%d/%s", 
+                // artworks/user-123/artwork-a1b2c3d4/filename.glb
+                yield String.format("artworks/user-%d/artwork-%s/%s", 
                         context.getUserId(), context.getArtworkId(), fileName);
             }
             case MEDIA -> {
