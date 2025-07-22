@@ -18,11 +18,11 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS postgis;
 
 -- ========== ENUM 타입 정의 (타입 안전성 확보) ==========
-CREATE TYPE user_role AS ENUM ('GUEST', 'USER', 'ARTIST', 'ADMIN');
-CREATE TYPE user_mode AS ENUM ('VR', 'AR', 'ARTIST');
-CREATE TYPE visibility_type AS ENUM ('PRIVATE', 'PUBLIC');
-CREATE TYPE media_type AS ENUM ('AUDIO', 'IMAGE', 'MODEL_3D', 'VIDEO');
-CREATE TYPE ai_request_type AS ENUM ('BRUSH', 'PALETTE', 'CHATBOT');
+CREATE TYPE userrole AS ENUM ('GUEST', 'USER', 'ARTIST', 'ADMIN');
+CREATE TYPE usermode AS ENUM ('AR', 'ARTIST');
+CREATE TYPE visibilitytype AS ENUM ('PRIVATE', 'PUBLIC');
+CREATE TYPE mediatype AS ENUM ('AUDIO', 'IMAGE', 'MODEL_3D', 'VIDEO');
+CREATE TYPE airequesttype AS ENUM ('BRUSH', 'PALETTE', 'CHATBOT');
 
 -- ========== 공통 트리거 함수 ==========
 CREATE OR REPLACE FUNCTION update_updated_at_column() RETURNS TRIGGER AS $$
@@ -43,9 +43,9 @@ CREATE TABLE users (
                        google_user_id VARCHAR(255),
                        facebook_user_id VARCHAR(255),
                        primary_provider VARCHAR(20) NOT NULL,
-                       role user_role NOT NULL DEFAULT 'GUEST',
-                       highest_role user_role NOT NULL DEFAULT 'GUEST',
-                       current_mode user_mode NOT NULL DEFAULT 'VR',
+                       role userrole NOT NULL DEFAULT 'GUEST',
+                       highest_role userrole NOT NULL DEFAULT 'GUEST',
+                       current_mode usermode NOT NULL DEFAULT 'AR',
                        account_linked BOOLEAN NOT NULL DEFAULT FALSE,
                        artist_qualified_at TIMESTAMP WITH TIME ZONE,
                        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -79,7 +79,7 @@ CREATE TABLE artworks (
                           description TEXT,
                           glb_url VARCHAR(2048) NOT NULL,
                           thumbnail_media_id BIGINT,
-                          visibility visibility_type NOT NULL DEFAULT 'PRIVATE',
+                          visibility visibilitytype NOT NULL DEFAULT 'PRIVATE',
                           price_cash DECIMAL(10,2),
                           favorite_count INT NOT NULL DEFAULT 0,
                           view_count INT NOT NULL DEFAULT 0,
@@ -98,11 +98,11 @@ CREATE TABLE media (
                        media_id BIGSERIAL PRIMARY KEY,
                        user_id BIGINT NOT NULL,
                        artwork_id BIGINT,
-                       media_type media_type NOT NULL,
+                       media_type mediatype NOT NULL,
                        file_url VARCHAR(2048) NOT NULL,
                        duration_seconds INT,
                        thumbnail_url VARCHAR(2048),
-                       visibility visibility_type NOT NULL DEFAULT 'PRIVATE',
+                       visibility visibilitytype NOT NULL DEFAULT 'PRIVATE',
                        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                        CONSTRAINT media_user_id_fk FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
@@ -194,7 +194,7 @@ CREATE TABLE ai_generated_assets (
 CREATE TABLE ai_request_logs (
                                  log_id BIGSERIAL PRIMARY KEY,
                                  user_id BIGINT NOT NULL,
-                                 request_type ai_request_type NOT NULL,
+                                 request_type airequesttype NOT NULL,
                                  request_text TEXT,
                                  response_data JSONB,
                                  is_success BOOLEAN NOT NULL DEFAULT FALSE,
@@ -305,13 +305,13 @@ CREATE TABLE account_linking_history (
                                          action_type VARCHAR(20) NOT NULL,
                                          provider VARCHAR(20) NOT NULL,
                                          provider_user_id VARCHAR(255) NOT NULL,
-                                         previous_role user_role,
-                                         new_role user_role,
+                                         previous_role userrole,
+                                         new_role userrole,
                                          linked_from_user_id BIGINT,
                                          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                                          updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(), -- [추가]
                                          CONSTRAINT account_linking_history_user_id_fk FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
-                                         CONSTRAINT account_linking_history_action_check CHECK (action_type IN ('CREATED', 'LINKED', 'PROMOTED', 'MERGED')),
+                                         CONSTRAINT account_linking_history_action_check CHECK (action_type IN ('CREATED', 'LINKED', 'PROMOTED', 'MERGED', 'UNLINKED')),
                                          CONSTRAINT account_linking_history_provider_check CHECK (provider IN ('META', 'GOOGLE', 'FACEBOOK'))
 );
 
@@ -323,6 +323,31 @@ CREATE TABLE user_preferences (
                                   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(), -- [추가]
                                   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
                                   CONSTRAINT user_preferences_user_id_fk FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+);
+
+-- 21. account_pairings: VR-AR 계정 페어링 관리
+CREATE TABLE account_pairings (
+    pairing_id BIGSERIAL PRIMARY KEY,
+    pairing_code UUID NOT NULL DEFAULT gen_random_uuid(),
+    ar_user_id BIGINT NOT NULL,
+    qr_image_url VARCHAR(2048),
+    is_used BOOLEAN NOT NULL DEFAULT FALSE,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    linked_meta_user_id VARCHAR(255),
+    completed_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    -- 제약 조건
+    CONSTRAINT account_pairings_ar_user_id_fk 
+        FOREIGN KEY (ar_user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    CONSTRAINT account_pairings_pairing_code_uk 
+        UNIQUE (pairing_code),
+    CONSTRAINT account_pairings_expires_at_check 
+        CHECK (expires_at > created_at),
+    CONSTRAINT account_pairings_completion_check 
+        CHECK ((is_used = TRUE AND linked_meta_user_id IS NOT NULL AND completed_at IS NOT NULL) 
+               OR (is_used = FALSE AND linked_meta_user_id IS NULL AND completed_at IS NULL))
 );
 
 -- ========== 트리거 생성 (모든 테이블에 적용) ==========
@@ -347,6 +372,7 @@ CREATE TRIGGER trigger_likes_updated_at BEFORE UPDATE ON likes FOR EACH ROW EXEC
 CREATE TRIGGER trigger_comments_updated_at BEFORE UPDATE ON comments FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER trigger_account_linking_history_updated_at BEFORE UPDATE ON account_linking_history FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER trigger_user_preferences_updated_at BEFORE UPDATE ON user_preferences FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER trigger_account_pairings_updated_at BEFORE UPDATE ON account_pairings FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- ========== 최적화 인덱스 생성 ==========
 CREATE INDEX users_meta_user_id_idx ON users(meta_user_id) WHERE meta_user_id IS NOT NULL;
@@ -367,6 +393,11 @@ CREATE INDEX location_exhibitions_location_point_gist ON location_exhibitions US
 CREATE INDEX account_linking_history_user_id_idx ON account_linking_history(user_id);
 CREATE INDEX account_linking_history_action_type_idx ON account_linking_history(action_type, created_at);
 CREATE INDEX account_linking_history_provider_idx ON account_linking_history(provider, provider_user_id);
+CREATE INDEX account_pairings_pairing_code_idx ON account_pairings(pairing_code);
+CREATE INDEX account_pairings_expires_at_idx ON account_pairings(expires_at);
+CREATE INDEX account_pairings_ar_user_id_idx ON account_pairings(ar_user_id);
+CREATE INDEX account_pairings_is_used_idx ON account_pairings(is_used) WHERE is_used = FALSE;
+CREATE INDEX account_pairings_linked_meta_user_id_idx ON account_pairings(linked_meta_user_id) WHERE linked_meta_user_id IS NOT NULL;
 
 -- ========== 기본 데이터 삽입 ==========
 INSERT INTO tags (tag_name) VALUES

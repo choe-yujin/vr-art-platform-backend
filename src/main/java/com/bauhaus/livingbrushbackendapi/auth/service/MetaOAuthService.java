@@ -10,7 +10,6 @@ import com.bauhaus.livingbrushbackendapi.security.jwt.JwtTokenProvider;
 import com.bauhaus.livingbrushbackendapi.user.entity.User;
 import com.bauhaus.livingbrushbackendapi.user.entity.enumeration.Platform;
 import com.bauhaus.livingbrushbackendapi.user.entity.enumeration.Provider;
-import com.bauhaus.livingbrushbackendapi.user.repository.UserRepository;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -32,20 +31,19 @@ import org.springframework.web.util.UriComponentsBuilder;
 @Service
 public class MetaOAuthService implements OAuthService {
 
-    private final UserRepository userRepository;
+    private final UserAccountLinkingService userAccountLinkingService;
     private final JwtTokenProvider jwtTokenProvider;
     private final RestTemplate metaRestTemplate;
     private final String metaUserInfoUri;
 
-    // [수정] @RequiredArgsConstructor를 제거하고, 명시적인 생성자를 사용합니다.
-    // 이렇게 해야 @Qualifier와 @Value가 올바르게 동작합니다.
+    // [수정] UserAccountLinkingService 추가
     public MetaOAuthService(
-            UserRepository userRepository,
+            UserAccountLinkingService userAccountLinkingService,
             JwtTokenProvider jwtTokenProvider,
-            @Qualifier("metaRestTemplate") RestTemplate metaRestTemplate, // "metaRestTemplate" 별명을 가진 Bean을 주입
-            @Value("${spring.security.oauth2.client.provider.meta.user-info-uri}") String metaUserInfoUri // yml의 값을 주입
+            @Qualifier("metaRestTemplate") RestTemplate metaRestTemplate,
+            @Value("${spring.security.oauth2.client.provider.meta.user-info-uri}") String metaUserInfoUri
     ) {
-        this.userRepository = userRepository;
+        this.userAccountLinkingService = userAccountLinkingService;
         this.jwtTokenProvider = jwtTokenProvider;
         this.metaRestTemplate = metaRestTemplate;
         this.metaUserInfoUri = metaUserInfoUri;
@@ -55,8 +53,23 @@ public class MetaOAuthService implements OAuthService {
     private record MetaUserInfo(
             @JsonProperty("id") String id,
             @JsonProperty("name") String name,
-            @JsonProperty("email") String email
-    ) {}
+            @JsonProperty("email") String email,
+            @JsonProperty("picture") Picture picture
+    ) {
+        // 프로필 이미지 URL 추출 헬퍼 메서드
+        public String getProfileImageUrl() {
+            return (picture != null && picture.data() != null) ? picture.data().url() : null;
+        }
+        
+        // Meta Graph API의 picture 응답 구조
+        private record Picture(
+                @JsonProperty("data") PictureData data
+        ) {}
+        
+        private record PictureData(
+                @JsonProperty("url") String url
+        ) {}
+    }
 
     @Override
     public Provider getProvider() {
@@ -70,42 +83,45 @@ public class MetaOAuthService implements OAuthService {
             throw new CustomException(ErrorCode.INVALID_INPUT_VALUE, "MetaLoginRequest 타입이 필요합니다.");
         }
 
+        // 1. Meta API에서 사용자 정보 조회
         MetaUserInfo metaUserInfo = verifyMetaUser(metaRequest.metaAccessToken());
         log.info("Meta 사용자 정보 확인 완료 - Meta User ID: {}, Platform: {}", metaUserInfo.id(), metaRequest.getPlatform());
 
-        // 기존 사용자를 찾거나, 없으면 새로 생성합니다.
-        User user = userRepository.findByMetaUserId(metaUserInfo.id())
-                .orElseGet(() -> {
-                    log.info("신규 Meta 사용자 등록 - Meta User ID: {}", metaUserInfo.id());
-                    return userRepository.save(
-                            User.createNewMetaUser(metaUserInfo.id(), metaUserInfo.email(), metaUserInfo.name())
-                    );
-                });
+        // 2. UserAccountLinkingService를 통해 통합 계정 처리
+        UserAccountLinkingService.OAuthAccountInfo accountInfo = UserAccountLinkingService.OAuthAccountInfo.builder()
+                .provider("META")
+                .providerUserId(metaUserInfo.id())
+                .name(metaUserInfo.name())
+                .email(metaUserInfo.email())
+                .platform(metaRequest.getPlatform().name())
+                .profileImageUrl(metaUserInfo.getProfileImageUrl())
+                .build();
 
-        // 최신 정보로 프로필을 업데이트합니다.
-        user.updateProfile(metaUserInfo.name(), metaUserInfo.email());
+        UserAccountLinkingService.AccountLinkingResult result = userAccountLinkingService.handleUnifiedAccountScenario(accountInfo);
+        User user = result.getUser();
 
-        // VR 플랫폼으로 접속했고, 아직 작가 권한이 없다면 작가로 승격시킵니다.
+        // 3. VR 플랫폼으로 접속했고, 아직 작가 권한이 없다면 작가로 승격
         if (metaRequest.getPlatform() == Platform.VR && user.getArtistQualifiedAt() == null) {
             log.info("사용자 {}를 ARTIST로 승격합니다.", user.getUserId());
             user.promoteToArtist();
         }
 
-        // JWT 토큰을 생성합니다.
+        // 4. JWT 토큰 생성
         String accessToken = jwtTokenProvider.createAccessToken(user.getUserId(), user.getRole());
         String refreshToken = jwtTokenProvider.createRefreshToken(user.getUserId());
 
+        log.info("Meta 인증 성공 - User ID: {}, 처리 타입: {}", user.getUserId(), result.getType());
         return new AuthResponse(accessToken, refreshToken, user.getUserId(), user.getRole());
     }
 
     /**
      * Meta Graph API를 호출하여 Access Token을 검증하고 사용자 정보를 가져옵니다.
      * @param accessToken Meta에서 발급한 Access Token
-     * @return Meta 사용자 정보
+     * @return Meta 사용자 정보 (프로필 이미지 포함)
      */
     private MetaUserInfo verifyMetaUser(String accessToken) {
         String url = UriComponentsBuilder.fromHttpUrl(metaUserInfoUri)
-                .queryParam("fields", "id,name,email")
+                .queryParam("fields", "id,name,email,picture{url}") // picture 필드 추가
                 .queryParam("access_token", accessToken)
                 .toUriString();
         try {

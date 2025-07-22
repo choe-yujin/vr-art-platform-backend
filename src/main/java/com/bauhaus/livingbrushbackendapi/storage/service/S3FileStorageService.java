@@ -149,6 +149,10 @@ public class S3FileStorageService implements FileStorageService {
                 // profiles/user-123/filename.jpg
                 yield String.format("profiles/user-%d/%s", context.getUserId(), fileName);
             }
+            case PAIRING_QR -> {
+                // pairing-qr/user-123/filename.png (사용자별 관리)
+                yield String.format("pairing-qr/user-%d/%s", context.getUserId(), fileName);
+            }
             case OTHER -> {
                 // uploads/user-123/filename.ext
                 yield String.format("uploads/user-%d/%s", context.getUserId(), fileName);

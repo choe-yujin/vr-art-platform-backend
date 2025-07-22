@@ -6,6 +6,7 @@ import com.bauhaus.livingbrushbackendapi.user.entity.enumeration.Provider;
 import com.bauhaus.livingbrushbackendapi.user.entity.enumeration.UserMode;
 import com.bauhaus.livingbrushbackendapi.user.entity.enumeration.UserRole;
 import com.bauhaus.livingbrushbackendapi.user.repository.UserRepository;
+import com.bauhaus.livingbrushbackendapi.user.service.ProfileImageService;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class UserAccountLinkingService {
 
     private final UserRepository userRepository;
     private final UserPermissionService userPermissionService;
+    private final ProfileImageService profileImageService;
 
     // --- 서비스 로직 (이전과 동일) ---
     public AccountLinkingResult handleUnifiedAccountScenario(OAuthAccountInfo accountInfo) {
@@ -94,25 +96,48 @@ public class UserAccountLinkingService {
         String nickname = Optional.ofNullable(accountInfo.getName())
                 .orElseGet(() -> provider.name() + "User_" + System.currentTimeMillis() % 10000);
 
-        // User 엔티티의 정적 팩토리 메서드 사용
+        // User 엔티티의 정적 팩토리 메서드 사용 (프로필 이미지는 OAuth URL로 임시 저장)
         User newUser;
         switch (provider) {
-            case META -> newUser = User.createNewMetaUser(accountInfo.getProviderUserId(), accountInfo.getEmail(), nickname);
-            case GOOGLE -> newUser = User.createNewGoogleUser(accountInfo.getProviderUserId(), accountInfo.getEmail(), nickname);
+            case META -> newUser = User.createNewMetaUser(accountInfo.getProviderUserId(), accountInfo.getEmail(), nickname, accountInfo.getProfileImageUrl());
+            case GOOGLE -> newUser = User.createNewGoogleUser(accountInfo.getProviderUserId(), accountInfo.getEmail(), nickname, accountInfo.getProfileImageUrl());
             case FACEBOOK -> {
-                // Facebook용 정적 팩토리 메서드가 없으므로 임시로 Meta 방식 사용
+                // Facebook용 정적 팩토리 메서드가 없으므로 임시로 Builder 사용
                 newUser = User.builder()
                     .nickname(nickname)
                     .email(accountInfo.getEmail())
                     .primaryProvider(provider)
                     .providerId(accountInfo.getProviderUserId())
                     .role(role)
+                    .oauthProfileImageUrl(accountInfo.getProfileImageUrl())
                     .build();
             }
             default -> throw new UnsupportedOAuthProviderException("지원하지 않는 OAuth 제공자: " + provider);
         }
 
-        return userRepository.save(newUser);
+        // 데이터베이스에 먼저 저장 (userId 생성 필요)
+        User savedUser = userRepository.save(newUser);
+
+        // OAuth 프로필 이미지를 S3에 업로드하고 URL 업데이트
+        if (accountInfo.getProfileImageUrl() != null && !accountInfo.getProfileImageUrl().isBlank()) {
+            try {
+                String s3ProfileImageUrl = profileImageService.uploadProfileImageFromUrl(
+                        savedUser.getUserId(), accountInfo.getProfileImageUrl());
+                
+                // UserProfile의 프로필 이미지 URL 업데이트
+                savedUser.getUserProfile().updateProfileImage(s3ProfileImageUrl);
+                
+                log.info("OAuth 프로필 이미지 S3 업로드 완료 - User ID: {}, Provider: {}, S3 URL: {}", 
+                        savedUser.getUserId(), provider, s3ProfileImageUrl);
+                
+            } catch (Exception e) {
+                log.warn("OAuth 프로필 이미지 업로드 실패, 기본 이미지 사용 - User ID: {}, Provider: {}, 오류: {}", 
+                        savedUser.getUserId(), provider, e.getMessage());
+                // 실패해도 회원가입은 정상적으로 진행 (기본 이미지 사용)
+            }
+        }
+
+        return savedUser;
     }
 
     private Optional<User> findByProvider(Provider provider, String providerId) {
@@ -141,6 +166,7 @@ public class UserAccountLinkingService {
         private final String name;
         private final String email;
         private final String platform;
+        private final String profileImageUrl; // OAuth 프로필 이미지 URL 추가
     }
 
     /**

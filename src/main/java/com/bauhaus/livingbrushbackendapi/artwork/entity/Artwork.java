@@ -69,7 +69,7 @@ public class Artwork extends BaseEntity {
     private Media thumbnailMedia;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "visibility", nullable = false, columnDefinition = "visibility_type")
+    @Column(name = "visibility", nullable = false, columnDefinition = "visibilitytype")
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private VisibilityType visibility;
 

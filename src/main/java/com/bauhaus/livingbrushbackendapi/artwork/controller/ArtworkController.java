@@ -184,16 +184,32 @@ public class ArtworkController {
 
     @Operation(
             summary = "사용자별 작품 목록 조회",
-            description = "특정 사용자의 작품 목록을 페이징으로 조회합니다."
+            description = "특정 사용자의 작품 목록을 페이징으로 조회합니다. 본인인 경우 모든 작품, 다른 사용자인 경우 공개 작품만 조회됩니다."
     )
     @GetMapping("/user/{userId}")
     public ResponseEntity<Page<ArtworkListResponse>> getArtworksByUser(
             @Parameter(description = "사용자 ID", required = true) @PathVariable Long userId,
+            @Parameter(description = "요청자 사용자 ID", required = false) @RequestHeader(value = "X-User-Id", required = false) Long requestUserId,
             @Parameter(description = "페이징 정보") @PageableDefault(size = 20) Pageable pageable
     ) {
-        log.info("사용자별 작품 목록 조회 요청 - 사용자 ID: {}", userId);
+        log.info("사용자별 작품 목록 조회 요청 - 사용자 ID: {}, 요청자 ID: {}", userId, requestUserId);
 
-        Page<ArtworkListResponse> response = artworkService.getArtworksByUser(userId, pageable);
+        Page<ArtworkListResponse> response = artworkService.getArtworksByUser(userId, requestUserId, pageable);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+            summary = "사용자의 공개 작품만 조회",
+            description = "특정 사용자의 공개 작품만 페이징으로 조회합니다. 프로필 페이지에서 사용됩니다."
+    )
+    @GetMapping("/user/{userId}/public")
+    public ResponseEntity<Page<ArtworkListResponse>> getPublicArtworksByUser(
+            @Parameter(description = "사용자 ID", required = true) @PathVariable Long userId,
+            @Parameter(description = "페이징 정보") @PageableDefault(size = 20) Pageable pageable
+    ) {
+        log.info("사용자 공개 작품 목록 조회 요청 - 사용자 ID: {}", userId);
+
+        Page<ArtworkListResponse> response = artworkService.getPublicArtworksByUser(userId, pageable);
         return ResponseEntity.ok(response);
     }
 
