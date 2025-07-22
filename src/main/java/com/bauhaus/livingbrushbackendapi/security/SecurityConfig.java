@@ -77,6 +77,12 @@ public class SecurityConfig {
                 // 5. 요청 경로별 인가 규칙 설정
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_URLS).permitAll() // 공개 경로는 모두 허용
+                        // WebAR용 작품 조회 API (GET 요청만 공개)
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/artworks/*").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/artworks/*/view").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/artworks/public").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/artworks/search").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/artworks/user/*/public").permitAll()
                         .anyRequest().authenticated() // 그 외 모든 요청은 인증 필요
                 )
 
@@ -101,7 +107,16 @@ public class SecurityConfig {
 
         // TODO: 운영 환경에서는 실제 프론트엔드 도메인을 명시해야 합니다.
         // 예: "https://livingbrush.com"
-        configuration.setAllowedOrigins(List.of("http://localhost:3000", "http://127.0.0.1:3000"));
+        configuration.setAllowedOrigins(List.of(
+                "http://localhost:3000", 
+                "http://127.0.0.1:3000",
+                "http://localhost:3001",
+                "http://localhost:8080",
+                "http://localhost:8081",
+                "http://localhost:5173",  // Vite
+                "http://localhost:4200",   // Angular
+                "https://livingbrush.shop"
+        ));
 
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*")); // 모든 헤더 허용
