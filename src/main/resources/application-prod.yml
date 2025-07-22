@@ -7,9 +7,6 @@ server:
   port: 8888
 
 spring:
-  # -----------------------------------------------------------------
-  # Database Configuration (RDS PostgreSQL)
-  # -----------------------------------------------------------------
   datasource:
     url: jdbc:postgresql://${RDS_HOSTNAME}:${RDS_PORT:5432}/${RDS_DB_NAME}
     username: ${RDS_USERNAME}
@@ -22,30 +19,31 @@ spring:
       idle-timeout: 300000
       max-lifetime: 1200000
 
-  # -----------------------------------------------------------------
-  # JPA & Hibernate Configuration (운영 환경)
-  # -----------------------------------------------------------------
   jpa:
     open-in-view: false
     hibernate:
-      ddl-auto: none # 운영에서는 절대 create/update 사용하지 않음
+      ddl-auto: none
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        show_sql: false # 운영에서는 SQL 로그 비활성화
+        show_sql: false
         format_sql: false
 
-  # -----------------------------------------------------------------
-  # Flyway Database Migration (운영 환경)
-  # -----------------------------------------------------------------
   flyway:
     enabled: true
     baseline-on-migrate: true
     validate-on-migrate: true
 
-# ===================================================================
-# AWS Configuration (운영 환경)
-# ===================================================================
+  security:
+    oauth2:
+      client:
+        provider:
+          meta:
+            authorization-uri: https://www.facebook.com/v18.0/dialog/oauth
+            token-uri: https://graph.facebook.com/v18.0/oauth/access_token
+            user-info-uri: https://graph.facebook.com/me?fields=id,name,email,picture
+            user-name-attribute: id
+
 cloud:
   aws:
     s3:
@@ -62,38 +60,26 @@ aws:
   cloudfront:
     domain: ${CLOUDFRONT_DOMAIN}
 
-# ===================================================================
-# CORS Configuration (운영 환경)
-# ===================================================================
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:https://livingbrush.shop,https://www.livingbrush.shop}
 
-# ===================================================================
-# Application Configuration (운영 환경)
-# ===================================================================
 app:
   qr:
-    local-path: /app/static-files/qr-images # Docker 컨테이너 내부 경로
+    local-path: /app/static-files/qr-images
     web-path: /static-files/qr-images/
     size: 300
     format: PNG
-  
+
   web-ar:
     base-url: ${WEB_AR_BASE_URL:https://livingbrush.shop}
-  
+
   profile:
     default-image-url: ${DEFAULT_PROFILE_IMAGE_URL}
 
-# ===================================================================
-# AI Server Configuration (운영 환경)
-# ===================================================================
 ai:
   server:
     url: ${AI_SERVER_URL}
 
-# ===================================================================
-# Logging Configuration (운영 환경)
-# ===================================================================
 logging:
   level:
     root: INFO
@@ -103,9 +89,6 @@ logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
-# ===================================================================
-# Spring Actuator Configuration (운영 환경)
-# ===================================================================
 management:
   endpoints:
     web:
@@ -113,4 +96,4 @@ management:
         include: health,info,metrics
   endpoint:
     health:
-      show-details: never # 보안상 운영에서는 상세 정보 비공개
+      show-details: never
