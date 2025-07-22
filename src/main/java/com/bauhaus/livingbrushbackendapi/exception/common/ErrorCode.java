@@ -29,6 +29,24 @@ public enum ErrorCode {
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "U001", "해당 사용자를 찾을 수 없습니다."),
     EMAIL_DUPLICATION(HttpStatus.CONFLICT, "U002", "이미 사용 중인 이메일입니다."),
     NICKNAME_DUPLICATION(HttpStatus.CONFLICT, "U003", "이미 사용 중인 닉네임입니다."),
+    USER_PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, "U004", "해당 사용자의 프로필을 찾을 수 없습니다."),
+    PROFILE_IMAGE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "U005", "프로필 이미지 업로드에 실패했습니다."),
+    INVALID_PROFILE_IMAGE_FORMAT(HttpStatus.BAD_REQUEST, "U006", "지원하지 않는 프로필 이미지 형식입니다."),
+    PROFILE_IMAGE_TOO_LARGE(HttpStatus.BAD_REQUEST, "U007", "프로필 이미지 크기가 너무 큽니다."),
+
+    // ========== 팔로우 (Follow) ==========
+    FOLLOW_SELF_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "R001", "자기 자신을 팔로우할 수 없습니다."), // R은 Relationship
+    ALREADY_FOLLOWING(HttpStatus.CONFLICT, "R002", "이미 팔로우하고 있는 사용자입니다."),
+    NOT_FOLLOWING(HttpStatus.BAD_REQUEST, "R003", "팔로우하지 않은 사용자입니다."),
+    FOLLOW_LIMIT_EXCEEDED(HttpStatus.BAD_REQUEST, "R004", "팔로우 가능한 최대 수를 초과했습니다."),
+
+    // ========== 좋아요/댓글 (Social) ==========
+    LIKE_ALREADY_EXISTS(HttpStatus.CONFLICT, "S001", "이미 좋아요를 누른 작품입니다."),
+    LIKE_NOT_FOUND(HttpStatus.NOT_FOUND, "S002", "좋아요를 누르지 않은 작품입니다."),
+    COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "S003", "해당 댓글을 찾을 수 없습니다."),
+    COMMENT_NOT_OWNED(HttpStatus.FORBIDDEN, "S004", "해당 댓글에 대한 권한이 없습니다."),
+    COMMENT_TOO_LONG(HttpStatus.BAD_REQUEST, "S005", "댓글이 너무 깁니다."),
+    COMMENT_EMPTY(HttpStatus.BAD_REQUEST, "S006", "댓글 내용을 입력해주세요."),
 
     // ========== 작품 (Artwork) ==========
     ARTWORK_NOT_FOUND(HttpStatus.NOT_FOUND, "W001", "해당 작품을 찾을 수 없습니다."), // 'A' 코드가 인증과 겹쳐서 'W'로 변경
@@ -54,6 +72,11 @@ public enum ErrorCode {
     DIRECTORY_CREATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "F001", "파일 저장소 초기화에 실패했습니다."),
     FILE_STORAGE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "F002", "파일 저장에 실패했습니다."),
     INVALID_FILE_PATH(HttpStatus.BAD_REQUEST, "F003", "파일 경로에 허용되지 않는 문자가 포함되어 있습니다."),
+    FILE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "F004", "파일 크기가 허용 한도를 초과했습니다."),
+    FILE_DOWNLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "F005", "외부 파일 다운로드에 실패했습니다."),
+    FILE_EMPTY(HttpStatus.BAD_REQUEST, "F006", "파일이 비어있습니다."),
+    FILE_INVALID_FORMAT(HttpStatus.BAD_REQUEST, "F007", "지원하지 않는 파일 형식입니다."),
+    FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "F008", "파일 업로드에 실패했습니다."),
 
     // ========== 외부 API 연동 (External API) ==========
     AI_SERVER_COMMUNICATION_ERROR(HttpStatus.SERVICE_UNAVAILABLE, "E001", "AI 서버와 통신하는 중 오류가 발생했습니다."),

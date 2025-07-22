@@ -34,7 +34,12 @@ public interface ArtworkRepository extends JpaRepository<Artwork, Long> {
     Page<Artwork> findByUser_UserIdOrderByCreatedAtDesc(Long userId, Pageable pageable);
 
     /**
-     * 특정 사용자의 특정 가시성 작품 조회
+     * 특정 사용자의 특정 가시성 작품 조회 (페이징 지원)
+     */
+    Page<Artwork> findByUser_UserIdAndVisibilityOrderByCreatedAtDesc(Long userId, VisibilityType visibility, Pageable pageable);
+
+    /**
+     * 특정 사용자의 특정 가시성 작품 조회 (리스트)
      */
     List<Artwork> findByUser_UserIdAndVisibilityOrderByCreatedAtDesc(Long userId, VisibilityType visibility);
 

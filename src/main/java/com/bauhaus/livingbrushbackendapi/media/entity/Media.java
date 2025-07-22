@@ -50,7 +50,7 @@ public class Media extends BaseEntity {
     private Artwork artwork;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "media_type", nullable = false, columnDefinition = "media_type")
+    @Column(name = "media_type", nullable = false, columnDefinition = "mediatype")
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private MediaType mediaType;
 
@@ -64,7 +64,7 @@ public class Media extends BaseEntity {
     private String thumbnailUrl;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "visibility", nullable = false, columnDefinition = "visibility_type")
+    @Column(name = "visibility", nullable = false, columnDefinition = "visibilitytype")
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private VisibilityType visibility;
 

@@ -28,6 +28,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux' // WebClient 사용을 위한 WebFlux 추가
     
     // Spring Security (OAuth2 Client 제거)
     implementation 'org.springframework.boot:spring-boot-starter-security'
