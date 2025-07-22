@@ -31,4 +31,15 @@ public class CustomException extends RuntimeException {
         super(errorCode.getMessage(), cause);
         this.errorCode = errorCode;
     }
+
+    /**
+     * [추가] 커스텀 메시지와 원인 예외를 모두 포함하여 생성합니다.
+     * @param errorCode 에러 코드
+     * @param customMessage 커스텀 에러 메시지
+     * @param cause 원본 예외
+     */
+    public CustomException(ErrorCode errorCode, String customMessage, Throwable cause) {
+        super(customMessage, cause);
+        this.errorCode = errorCode;
+    }
 }

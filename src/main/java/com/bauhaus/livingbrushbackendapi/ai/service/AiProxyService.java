@@ -70,23 +70,55 @@ public class AiProxyService {
 
     @Transactional
     public BrushGenerateResponse generateBrush(Long userId, BrushGenerateRequest request) {
-        log.info("🎨 AI 브러시 생성 요청 시작: {}", request.getPrompt());
+        log.info("🎨 AI 브러시 생성 요청 시작 - 사용자 ID: {}, 프롬프트: {}", userId, request.getPrompt());
+        
+        // 데이터 학습 동의 여부 확인 (로깅용)
+        boolean dataTrainingConsent = isDataTrainingConsented(userId);
+        String requestText = dataTrainingConsent ? request.getPrompt() : null;
+        
         Map<String, String> aiRequestPayload = Map.of("prompt", request.getPrompt());
-        return callAiServer(userId, AiRequestType.BRUSH, request.getPrompt(), AiApiEndpoint.BRUSH, aiRequestPayload);
+        return callAiServer(userId, AiRequestType.BRUSH, requestText, AiApiEndpoint.BRUSH, aiRequestPayload);
     }
 
     @Transactional
     public ColorGenerateResponse generateColors(Long userId, ColorGenerateRequest request) {
-        log.info("🎨 AI 팔레트 생성 요청 시작: {}", request.getTag());
+        log.info("🎨 AI 팔레트 생성 요청 시작 - 사용자 ID: {}, 태그: {}", userId, request.getTag());
+        
+        // 데이터 학습 동의 여부 확인 (로깅용)
+        boolean dataTrainingConsent = isDataTrainingConsented(userId);
+        String requestText = dataTrainingConsent ? request.getTag() : null;
+        
         Map<String, String> aiRequestPayload = Map.of("tag", request.getTag());
-        return callAiServer(userId, AiRequestType.PALETTE, request.getTag(), AiApiEndpoint.PALETTE, aiRequestPayload);
+        return callAiServer(userId, AiRequestType.PALETTE, requestText, AiApiEndpoint.PALETTE, aiRequestPayload);
     }
 
     @Transactional
     public ChatbotResponse chatbot(Long userId, ChatbotRequest request) {
-        log.info("🤖 AI 챗봇 질문 요청 시작: {}", request.getQuery());
+        log.info("🤖 AI 챗봇 질문 요청 시작 - 사용자 ID: {}, 질문: {}", userId, request.getQuery());
+        
+        // 데이터 학습 동의 여부 확인 (로깅용)
+        boolean dataTrainingConsent = isDataTrainingConsented(userId);
+        String requestText = dataTrainingConsent ? request.getQuery() : null;
+        
         Map<String, String> aiRequestPayload = Map.of("query", request.getQuery());
-        return callAiServer(userId, AiRequestType.CHATBOT, request.getQuery(), AiApiEndpoint.CHATBOT, aiRequestPayload);
+        return callAiServer(userId, AiRequestType.CHATBOT, requestText, AiApiEndpoint.CHATBOT, aiRequestPayload);
+    }
+
+    /**
+     * 사용자의 데이터 학습 동의 여부를 확인합니다.
+     */
+    private boolean isDataTrainingConsented(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        
+        if (user.getUserSettings() == null) {
+            return false;
+        }
+        
+        boolean consented = user.getUserSettings().isDataTrainingConsent();
+        log.debug("📊 데이터 학습 동의 여부 - 사용자 ID: {}, 동의: {}", userId, consented);
+        
+        return consented;
     }
 
     // 이 메소드는 자체 트랜잭션을 가지므로, 호출하는 public 메소드에도 @Transactional이 필요합니다.

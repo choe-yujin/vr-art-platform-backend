@@ -56,13 +56,13 @@ public class AccountLinkingHistory {
 
     // [개선] DB의 네이티브 ENUM 타입 'user_role'과 완벽하게 매핑합니다.
     @Enumerated(EnumType.STRING)
-    @Column(name = "previous_role", columnDefinition = "user_role")
+    @Column(name = "previous_role", columnDefinition = "userrole")
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private UserRole previousRole;
 
     // [개선] DB의 네이티브 ENUM 타입 'user_role'과 완벽하게 매핑합니다.
     @Enumerated(EnumType.STRING)
-    @Column(name = "new_role", columnDefinition = "user_role")
+    @Column(name = "new_role", columnDefinition = "userrole")
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private UserRole newRole;
 

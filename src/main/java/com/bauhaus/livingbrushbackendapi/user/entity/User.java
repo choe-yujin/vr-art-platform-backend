@@ -15,7 +15,7 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
 import jakarta.persistence.*;
-import java.time.ZonedDateTime;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -36,7 +36,7 @@ import java.util.Objects;
 @Getter
 @Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@ToString(exclude = {"userSettings", "artworks", "mediaList", "aiRequestLogs"})
+@ToString(exclude = {"userSettings", "userProfile", "artworks", "mediaList", "aiRequestLogs"})
 @DynamicInsert
 @DynamicUpdate
 public class User extends BaseEntity {
@@ -70,31 +70,33 @@ public class User extends BaseEntity {
 
     // [수정] DB의 'user_role' 네이티브 Enum 타입과 매핑하는 가장 간결한 방법
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "user_role")
+    @Column(nullable = false, columnDefinition = "userrole")
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private UserRole role;
 
     // [수정] 동일한 방식으로 적용
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "user_role")
+    @Column(nullable = false, columnDefinition = "userrole")
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private UserRole highestRole;
 
     // [수정] 동일한 방식으로 적용
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, columnDefinition = "user_mode")
+    @Column(nullable = false, columnDefinition = "usermode")
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private UserMode currentMode;
 
-    // ... 이하 코드는 이전과 동일합니다 ...
     @Column(name = "account_linked", nullable = false)
     private boolean accountLinked;
 
     @Column(name = "artist_qualified_at")
-    private ZonedDateTime artistQualifiedAt;
+    private LocalDateTime artistQualifiedAt;
 
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private UserSetting userSettings;
+
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    private UserProfile userProfile;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @BatchSize(size = 100)
@@ -110,7 +112,7 @@ public class User extends BaseEntity {
 
 
     @Builder
-    private User(String nickname, String email, Provider primaryProvider, String providerId, UserRole role) {
+    private User(String nickname, String email, Provider primaryProvider, String providerId, UserRole role, String oauthProfileImageUrl) {
         validate(nickname, primaryProvider, providerId);
 
         this.nickname = nickname;
@@ -129,26 +131,30 @@ public class User extends BaseEntity {
         this.currentMode = UserMode.getDefaultMode();
         this.accountLinked = false;
 
+        // UserSettings와 UserProfile 자동 생성
         this.assignSettings(new UserSetting(this));
+        this.assignProfile(new UserProfile(this, oauthProfileImageUrl));
     }
 
-    public static User createNewMetaUser(String providerId, String email, String name) {
+    public static User createNewMetaUser(String providerId, String email, String name, String oauthProfileImageUrl) {
         return User.builder()
                 .nickname(name)
                 .email(email)
                 .primaryProvider(Provider.META)
                 .providerId(providerId)
                 .role(UserRole.USER)
+                .oauthProfileImageUrl(oauthProfileImageUrl)
                 .build();
     }
 
-    public static User createNewGoogleUser(String providerId, String email, String name) {
+    public static User createNewGoogleUser(String providerId, String email, String name, String oauthProfileImageUrl) {
         return User.builder()
                 .nickname(name)
                 .email(email)
                 .primaryProvider(Provider.GOOGLE)
                 .providerId(providerId)
                 .role(UserRole.USER)
+                .oauthProfileImageUrl(oauthProfileImageUrl)
                 .build();
     }
 
@@ -158,7 +164,7 @@ public class User extends BaseEntity {
             if (this.highestRole.getLevel() < UserRole.ARTIST.getLevel()) {
                 this.highestRole = UserRole.ARTIST;
             }
-            this.artistQualifiedAt = ZonedDateTime.now();
+            this.artistQualifiedAt = LocalDateTime.now();
         }
     }
 
@@ -197,7 +203,7 @@ public class User extends BaseEntity {
             this.role = UserRole.ARTIST;
             this.highestRole = UserRole.ARTIST;
             this.currentMode = UserMode.ARTIST;
-            this.artistQualifiedAt = ZonedDateTime.now();
+            this.artistQualifiedAt = LocalDateTime.now();
         }
     }
 
@@ -279,6 +285,10 @@ public class User extends BaseEntity {
 
     private void assignSettings(UserSetting settings) {
         this.userSettings = settings;
+    }
+
+    private void assignProfile(UserProfile profile) {
+        this.userProfile = profile;
     }
 
     private static void validate(String nickname, Provider primaryProvider, String providerId) {
