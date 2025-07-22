@@ -1,0 +1,116 @@
+# ===============================================
+# =         PRODUCTION ENVIRONMENT CONFIGURATION
+# = AWS EC2 + RDS 운영 환경을 위한 설정
+# ===============================================
+
+server:
+  port: 8888
+
+spring:
+  # -----------------------------------------------------------------
+  # Database Configuration (RDS PostgreSQL)
+  # -----------------------------------------------------------------
+  datasource:
+    url: jdbc:postgresql://${RDS_HOSTNAME}:${RDS_PORT:5432}/${RDS_DB_NAME}
+    username: ${RDS_USERNAME}
+    password: ${RDS_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 20000
+      idle-timeout: 300000
+      max-lifetime: 1200000
+
+  # -----------------------------------------------------------------
+  # JPA & Hibernate Configuration (운영 환경)
+  # -----------------------------------------------------------------
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: none # 운영에서는 절대 create/update 사용하지 않음
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        show_sql: false # 운영에서는 SQL 로그 비활성화
+        format_sql: false
+
+  # -----------------------------------------------------------------
+  # Flyway Database Migration (운영 환경)
+  # -----------------------------------------------------------------
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    validate-on-migrate: true
+
+# ===================================================================
+# AWS Configuration (운영 환경)
+# ===================================================================
+cloud:
+  aws:
+    s3:
+      bucket: ${S3_BUCKET_NAME}
+    region:
+      static: ${AWS_REGION:ap-northeast-2}
+    stack:
+      auto: false
+
+aws:
+  s3:
+    bucket-name: ${S3_BUCKET_NAME}
+    profile-path: profile
+  cloudfront:
+    domain: ${CLOUDFRONT_DOMAIN}
+
+# ===================================================================
+# CORS Configuration (운영 환경)
+# ===================================================================
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:https://livingbrush.shop,https://www.livingbrush.shop}
+
+# ===================================================================
+# Application Configuration (운영 환경)
+# ===================================================================
+app:
+  qr:
+    local-path: /app/static-files/qr-images # Docker 컨테이너 내부 경로
+    web-path: /static-files/qr-images/
+    size: 300
+    format: PNG
+  
+  web-ar:
+    base-url: ${WEB_AR_BASE_URL:https://livingbrush.shop}
+  
+  profile:
+    default-image-url: ${DEFAULT_PROFILE_IMAGE_URL}
+
+# ===================================================================
+# AI Server Configuration (운영 환경)
+# ===================================================================
+ai:
+  server:
+    url: ${AI_SERVER_URL}
+
+# ===================================================================
+# Logging Configuration (운영 환경)
+# ===================================================================
+logging:
+  level:
+    root: INFO
+    com.bauhaus.livingbrushbackendapi: INFO
+    org.hibernate.SQL: OFF
+    org.hibernate.type.descriptor.sql: OFF
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# ===================================================================
+# Spring Actuator Configuration (운영 환경)
+# ===================================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: never # 보안상 운영에서는 상세 정보 비공개
