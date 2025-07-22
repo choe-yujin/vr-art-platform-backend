@@ -128,6 +128,18 @@ public class Artwork extends BaseEntity {
     }
 
     /**
+     * 작품의 GLB URL을 업데이트합니다.
+     * @param newGlbUrl 새로운 GLB 파일 URL
+     */
+    public void updateGlbUrl(String newGlbUrl) {
+        if (newGlbUrl == null || newGlbUrl.trim().isEmpty()) {
+            throw new IllegalArgumentException("GLB URL은 비어있을 수 없습니다.");
+        }
+        this.glbUrl = newGlbUrl;
+        validate(); // 수정 후에도 데이터 무결성 검증
+    }
+
+    /**
      * 작품을 공개 상태로 변경합니다. 공개 조건을 만족하지 못하면 예외를 발생시킵니다.
      */
     public void publish() {

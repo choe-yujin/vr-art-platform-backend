@@ -23,9 +23,8 @@ import java.util.List;
 public class ArtworkCreateRequest {
 
     /**
-     * 작품 제목 (필수)
+     * 작품 제목 (AR 앱에서는 필수, VR에서는 자동 생성)
      */
-    @NotBlank(message = "작품 제목은 필수입니다")
     @Size(min = 1, max = 255, message = "작품 제목은 1자 이상 255자 이하여야 합니다")
     private String title;
 
@@ -36,9 +35,8 @@ public class ArtworkCreateRequest {
     private String description;
 
     /**
-     * GLB 파일 URL (필수)
+     * GLB 파일 URL (메타데이터 생성 시에만 필수)
      */
-    @NotBlank(message = "GLB 파일 URL은 필수입니다")
     private String glbUrl;
 
     /**

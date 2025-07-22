@@ -1,6 +1,7 @@
 package com.bauhaus.livingbrushbackendapi.artwork.service;
 
 import com.bauhaus.livingbrushbackendapi.artwork.dto.ArtworkCreateRequest;
+import com.bauhaus.livingbrushbackendapi.artwork.dto.VrArtworkCreateRequest;
 import com.bauhaus.livingbrushbackendapi.artwork.dto.ArtworkListResponse;
 import com.bauhaus.livingbrushbackendapi.artwork.dto.ArtworkResponse;
 import com.bauhaus.livingbrushbackendapi.artwork.dto.ArtworkUpdateRequest;
@@ -15,6 +16,8 @@ import com.bauhaus.livingbrushbackendapi.media.entity.Media;
 import com.bauhaus.livingbrushbackendapi.media.service.MediaService;
 import com.bauhaus.livingbrushbackendapi.storage.service.FileStorageContext;
 import com.bauhaus.livingbrushbackendapi.storage.service.FileStorageService;
+import com.bauhaus.livingbrushbackendapi.common.service.FileNameGenerator;
+import com.bauhaus.livingbrushbackendapi.common.service.ArtworkIdGenerator;
 import com.bauhaus.livingbrushbackendapi.tag.entity.Tag;
 import com.bauhaus.livingbrushbackendapi.tag.repository.TagRepository;
 import com.bauhaus.livingbrushbackendapi.user.entity.User;
@@ -58,10 +61,84 @@ public class ArtworkService {
     private final MediaService mediaService;
     private final FileStorageService fileStorageService;
     private final QrCodeRepository qrCodeRepository;
+    private final FileNameGenerator fileNameGenerator;
+    private final ArtworkIdGenerator artworkIdGenerator;
 
     // ====================================================================
     // ✨ 작품 생성 로직 (시나리오 지원)
     // ====================================================================
+
+    /**
+     * 🎯 VR 전용: 간편 작품 업로드
+     *
+     * VR 기기의 조작 제약을 고려하여 최소한의 정보로 작품을 생성합니다.
+     * 제목과 설명은 자동 생성되며, 태그만 선택하면 됩니다.
+     */
+    @Transactional
+    public ArtworkResponse createVrArtwork(Long userId, VrArtworkCreateRequest vrRequest, MultipartFile glbFile) {
+        log.info("=== VR 작품 생성 시작 ===");
+        log.info("사용자 ID: {}, 파일: {}, 태그 수: {}", 
+                userId, glbFile.getOriginalFilename(), 
+                vrRequest.hasSelectedTags() ? vrRequest.getTagIds().size() : 0);
+
+        try {
+            // 1. 사용자 존재 확인
+            User user = findUserById(userId);
+
+            // 2. 임시 제목으로 작품 엔티티 먼저 생성
+            Artwork artwork = Artwork.create(
+                user,
+                "temporary_title", // 임시 제목
+                "placeholder", // 임시 GLB URL
+                vrRequest.generateDefaultDescription(),
+                null // VR에서는 가격 설정 없음
+            );
+
+            // 3. 작품 저장하여 ID 생성
+            Artwork savedArtwork = artworkRepository.save(artwork);
+            Long artworkId = savedArtwork.getArtworkId();
+            log.info("작품 저장 완료 - ID: {}", artworkId);
+
+            // 4. 실제 제목 생성 및 업데이트
+            String finalTitle = vrRequest.generateDefaultTitle(artworkId);
+            savedArtwork.updateDetails(finalTitle, null);
+            log.info("자동 생성된 제목: '{}'", finalTitle);
+
+            // 5. 고유한 GLB 파일명 생성
+            String uniqueFileName = fileNameGenerator.generateArtworkFileName(
+                    glbFile.getOriginalFilename(), userId, String.valueOf(artworkId));
+            log.info("생성된 GLB 파일명: {}", uniqueFileName);
+
+            // 6. GLB 파일을 S3에 저장
+            FileStorageContext context = FileStorageContext.forArtworkGlb(userId, artworkId);
+            String glbUrl = fileStorageService.saveWithContext(
+                glbFile.getBytes(), uniqueFileName, context);
+            log.info("GLB 파일 업로드 완료: {}", glbUrl);
+
+            // 7. 작품에 실제 GLB URL 업데이트
+            savedArtwork.updateGlbUrl(glbUrl);
+
+            // 8. 썸네일 미디어 설정 및 연결 (제공된 경우)
+            if (vrRequest.hasThumbnail()) {
+                setThumbnailMediaAndLink(savedArtwork, vrRequest.getThumbnailMediaId(), userId);
+            }
+
+            // 9. 태그 저장 (선택된 경우)
+            if (vrRequest.hasSelectedTags()) {
+                saveArtworkTags(savedArtwork, vrRequest.getTagIds());
+            }
+
+            log.info("=== VR 작품 생성 완료 - 제목: '{}' ===", finalTitle);
+            return ArtworkResponse.from(savedArtwork);
+
+        } catch (CustomException e) {
+            log.error("VR 작품 생성 중 비즈니스 예외 발생: {}", e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("VR 작품 생성 중 예상치 못한 오류 발생", e);
+            throw new CustomException(ErrorCode.ARTWORK_CREATION_FAILED, e);
+        }
+    }
 
     /**
      * 🎯 시나리오 1&2: VR에서 작품 생성 (GLB 파일과 함께)
@@ -78,34 +155,40 @@ public class ArtworkService {
             // 1. 사용자 존재 확인
             User user = findUserById(userId);
 
-            // 2. GLB 파일을 S3에 저장 (임시 작품 ID로 저장하므로 작품 생성 후 업데이트 필요)
-            String glbUrl = uploadGlbFile(userId, glbFile);
-            log.info("GLB 파일 업로드 완료: {}", glbUrl);
-
-            // 3. 작품 엔티티 생성
+            // 2. 작품 엔티티 먼저 생성 (GLB URL 없이)
             Artwork artwork = Artwork.create(
                 user,
                 request.getTitle(),
-                glbUrl,
+                "placeholder", // 임시 URL
                 request.getDescription(),
                 request.getPriceCash()
             );
 
-            // 4. 작품 저장
+            // 3. 작품 저장하여 ID 생성
             Artwork savedArtwork = artworkRepository.save(artwork);
-            log.info("작품 저장 완료 - ID: {}", savedArtwork.getArtworkId());
+            Long artworkId = savedArtwork.getArtworkId();
+            log.info("작품 저장 완료 - ID: {}", artworkId);
 
-            // 5. 썸네일 미디어 설정 (제공된 경우)
+            // 4. 고유한 GLB 파일명 생성 (실제 작품 ID 사용)
+            String uniqueFileName = fileNameGenerator.generateArtworkFileName(
+                    glbFile.getOriginalFilename(), userId, String.valueOf(artworkId));
+            log.info("생성된 GLB 파일명: {}", uniqueFileName);
+
+            // 5. GLB 파일을 S3에 저장 (실제 작품 ID 사용)
+            FileStorageContext context = FileStorageContext.forArtworkGlb(userId, artworkId);
+            String glbUrl = fileStorageService.saveWithContext(
+                glbFile.getBytes(), uniqueFileName, context);
+            log.info("GLB 파일 업로드 완료: {}", glbUrl);
+
+            // 6. 작품에 실제 GLB URL 업데이트
+            savedArtwork.updateGlbUrl(glbUrl);
+
+            // 7. 썸네일 미디어 설정 (제공된 경우)
             if (request.getThumbnailMediaId() != null) {
-                setThumbnailMedia(savedArtwork, request.getThumbnailMediaId(), userId);
+                setThumbnailMediaAndLink(savedArtwork, request.getThumbnailMediaId(), userId);
             }
 
-            // 6. 태그 저장 (제공된 경우)
-            if (request.getTagIds() != null && !request.getTagIds().isEmpty()) {
-                saveArtworkTags(savedArtwork, request.getTagIds());
-            }
-
-            // 6. 태그 저장 (제공된 경우)
+            // 8. 태그 저장 (제공된 경우)
             if (request.getTagIds() != null && !request.getTagIds().isEmpty()) {
                 saveArtworkTags(savedArtwork, request.getTagIds());
             }
@@ -155,7 +238,7 @@ public class ArtworkService {
 
             // 5. 썸네일 미디어 설정 (제공된 경우)
             if (request.getThumbnailMediaId() != null) {
-                setThumbnailMedia(savedArtwork, request.getThumbnailMediaId(), userId);
+                setThumbnailMediaAndLink(savedArtwork, request.getThumbnailMediaId(), userId);
             }
 
             // 6. 태그 저장 (제공된 경우)
@@ -231,7 +314,7 @@ public class ArtworkService {
             Artwork artwork = findArtworkByIdAndUserId(artworkId, userId);
 
             // 2. 썸네일 미디어 설정
-            setThumbnailMedia(artwork, mediaId, userId);
+            setThumbnailMediaAndLink(artwork, mediaId, userId);
 
             log.info("=== 작품 썸네일 설정 완료 ===");
 
@@ -264,8 +347,8 @@ public class ArtworkService {
             artwork.updateDetails(request.getTitle(), request.getDescription());
 
             // 3. 썸네일 미디어 변경 (요청된 경우)
-            if (request.getThumbnailMediaId() != null) {
-                setThumbnailMedia(artwork, request.getThumbnailMediaId(), userId);
+            if (request.hasNewThumbnail()) {
+                setThumbnailMediaAndLink(artwork, request.getThumbnailMediaId(), userId);
             }
 
             log.info("=== 작품 정보 업데이트 완료 ===");
@@ -579,38 +662,23 @@ public class ArtworkService {
     // ====================================================================
 
     /**
-     * GLB 파일을 S3에 업로드
+     * 썸네일 미디어 설정 및 작품 연결 (VR 업로드용)
      */
-    private String uploadGlbFile(Long userId, MultipartFile glbFile) {
-        try {
-            // 임시 ID로 컨텍스트 생성 (실제로는 작품 생성 후 업데이트해야 하지만, 단순화)
-            FileStorageContext context = FileStorageContext.forArtworkGlb(userId, 0L);
-
-            return fileStorageService.saveWithContext(
-                glbFile.getBytes(),
-                glbFile.getOriginalFilename(),
-                context
-            );
-        } catch (Exception e) {
-            log.error("GLB 파일 업로드 실패", e);
-            throw new CustomException(ErrorCode.FILE_STORAGE_FAILED, e);
-        }
-    }
-
-    /**
-     * 썸네일 미디어 설정 및 검증
-     */
-    private void setThumbnailMedia(Artwork artwork, Long mediaId, Long userId) {
+    private void setThumbnailMediaAndLink(Artwork artwork, Long mediaId, Long userId) {
         Media thumbnailMedia = mediaService.getMediaByIdAndUserId(mediaId, userId);
 
-        // 미디어가 이미 다른 작품에 연결되어 있고, 현재 작품이 아닌 경우 검증
-        if (thumbnailMedia.getArtwork() != null &&
-            !thumbnailMedia.getArtwork().getArtworkId().equals(artwork.getArtworkId())) {
-            throw new CustomException(ErrorCode.INVALID_THUMBNAIL_MEDIA);
+        // 1. 독립 미디어를 작품에 연결
+        if (thumbnailMedia.getArtwork() == null) {
+            mediaService.linkMediaToArtwork(userId, mediaId, artwork.getArtworkId());
+            // Media를 다시 조회하여 최신 상태 반영
+            thumbnailMedia = mediaService.getMediaByIdAndUserId(mediaId, userId);
         }
 
+        // 2. 작품의 썸네일로 설정
         artwork.setThumbnail(thumbnailMedia);
-        log.info("작품 {} 썸네일 미디어 {} 설정 완료", artwork.getArtworkId(), mediaId);
+        
+        log.info("VR 업로드: 썸네일 미디어 {} → 작품 {} 연결 및 설정 완료", 
+                mediaId, artwork.getArtworkId());
     }
 
     /**
