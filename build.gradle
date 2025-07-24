@@ -44,6 +44,9 @@ dependencies {
     // PostgreSQL + JPA
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     runtimeOnly 'org.postgresql:postgresql'
+    
+    // Redis (VR 로그인 토큰 관리)
+    implementation 'org.springframework.boot:spring-boot-starter-data-redis'
 
     // JWT Token Processing
     implementation 'io.jsonwebtoken:jjwt-api:0.12.6'

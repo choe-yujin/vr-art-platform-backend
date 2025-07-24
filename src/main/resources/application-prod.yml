@@ -34,6 +34,19 @@ spring:
     baseline-on-migrate: true
     validate-on-migrate: true
 
+  # Redis Configuration (VR 로그인 토큰 관리)
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: 10
+        max-idle: 8
+        min-idle: 2
+        max-wait: -1ms
+
   security:
     oauth2:
       client:
