@@ -2,11 +2,14 @@ package com.bauhaus.livingbrushbackendapi.auth.controller;
 
 import com.bauhaus.livingbrushbackendapi.auth.dto.GoogleLoginRequest;
 import com.bauhaus.livingbrushbackendapi.auth.dto.MetaLoginRequest;
+import com.bauhaus.livingbrushbackendapi.auth.dto.MetaSignupRequest;
 import com.bauhaus.livingbrushbackendapi.auth.dto.TokenRefreshRequest;
 import com.bauhaus.livingbrushbackendapi.auth.dto.AuthResponse;
 import com.bauhaus.livingbrushbackendapi.auth.service.AuthFacadeService;
 import com.bauhaus.livingbrushbackendapi.auth.service.AuthService;
 import com.bauhaus.livingbrushbackendapi.user.entity.enumeration.Provider;
+import com.bauhaus.livingbrushbackendapi.exception.common.CustomException;
+import com.bauhaus.livingbrushbackendapi.exception.common.ErrorCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -26,6 +29,31 @@ public class AuthController {
 
     private final AuthFacadeService authFacadeService;
     private final AuthService authService; // 토큰 갱신 등 공통 인증 로직 담당
+
+    @PostMapping("/signup/meta")
+    @Operation(summary = "Meta VR 회원가입", description = "Meta Access Token과 동의 정보로 회원가입합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "회원가입 성공"),
+            @ApiResponse(responseCode = "400", description = "필수 동의 미완료 또는 잘못된 요청"),
+            @ApiResponse(responseCode = "401", description = "Meta 토큰 인증 실패"),
+            @ApiResponse(responseCode = "409", description = "이미 존재하는 계정")
+    })
+    public ResponseEntity<AuthResponse> metaSignup(@Valid @RequestBody MetaSignupRequest request) {
+        log.info("Meta 회원가입 요청 - Platform: {}, Required consents: {}", 
+                request.platform(), request.consents().areRequiredConsentsProvided());
+        
+        // 필수 동의 검증
+        if (!request.consents().areRequiredConsentsProvided()) {
+            log.warn("Meta 회원가입 실패 - 필수 동의 미완료: STT={}, AI={}", 
+                    request.consents().sttConsent(), request.consents().aiConsent());
+            throw new CustomException(ErrorCode.CONSENT_REQUIRED, 
+                    "VR 앱 사용을 위해 음성인식(STT)과 AI 기능 사용에 동의해주세요.");
+        }
+        
+        AuthResponse response = authFacadeService.authenticateWithConsents(Provider.META, request);
+        log.info("Meta 회원가입 성공 - User ID: {}, Role: {}", response.userId(), response.role());
+        return ResponseEntity.ok(response);
+    }
 
     @PostMapping("/login/google")
     @Operation(summary = "Google OAuth 로그인", description = "Google ID Token을 검증하고 JWT 토큰을 발급합니다.")

@@ -90,7 +90,8 @@ public enum ErrorCode {
     // ========== AI 동의 및 권한 (AI Consent) ==========
     STT_CONSENT_REQUIRED(HttpStatus.FORBIDDEN, "AI001", "AI 기능 사용을 위해 음성 인식(STT) 사용에 동의해주세요."),
     AI_CONSENT_REQUIRED(HttpStatus.FORBIDDEN, "AI002", "AI 기능 사용에 동의해주세요."),
-    PREMIUM_REQUIRED(HttpStatus.FORBIDDEN, "AI003", "AI 기능은 프리미엄 사용자만 이용 가능합니다."),
+    CONSENT_REQUIRED(HttpStatus.BAD_REQUEST, "AI003", "필수 동의 항목을 확인해주세요."),
+    PREMIUM_REQUIRED(HttpStatus.FORBIDDEN, "AI004", "AI 기능은 프리미엄 사용자만 이용 가능합니다."),
 
     // ========== 계정 연동 (Account Linking) ==========
     ACCOUNT_ALREADY_LINKED(HttpStatus.CONFLICT, "L001", "이미 연동된 계정입니다."),
