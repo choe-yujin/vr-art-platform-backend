@@ -3,6 +3,7 @@ package com.bauhaus.livingbrushbackendapi.auth.service;
 
 import com.bauhaus.livingbrushbackendapi.auth.dto.AuthResponse;
 import com.bauhaus.livingbrushbackendapi.auth.dto.MetaLoginRequest;
+import com.bauhaus.livingbrushbackendapi.auth.dto.MetaSignupRequest;
 import com.bauhaus.livingbrushbackendapi.auth.dto.OAuthLoginRequest;
 import com.bauhaus.livingbrushbackendapi.exception.common.CustomException;
 import com.bauhaus.livingbrushbackendapi.exception.common.ErrorCode;
@@ -79,13 +80,28 @@ public class MetaOAuthService implements OAuthService {
     @Override
     @Transactional
     public AuthResponse authenticate(OAuthLoginRequest request) {
-        if (!(request instanceof MetaLoginRequest metaRequest)) {
-            throw new CustomException(ErrorCode.INVALID_INPUT_VALUE, "MetaLoginRequest 타입이 필요합니다.");
+        String metaAccessToken;
+        Platform platform;
+        MetaSignupRequest.ConsentData consents = null;
+        
+        // 로그인과 회원가입 요청 구분 처리
+        if (request instanceof MetaLoginRequest metaLoginRequest) {
+            metaAccessToken = metaLoginRequest.metaAccessToken();
+            platform = metaLoginRequest.getPlatform();
+            log.info("Meta 로그인 요청 처리 - Platform: {}", platform);
+        } else if (request instanceof MetaSignupRequest metaSignupRequest) {
+            metaAccessToken = metaSignupRequest.metaAccessToken();
+            platform = metaSignupRequest.getPlatform();
+            consents = metaSignupRequest.consents();
+            log.info("Meta 회원가입 요청 처리 - Platform: {}, Consents: STT={}, AI={}, DataTraining={}", 
+                    platform, consents.sttConsent(), consents.aiConsent(), consents.dataTrainingConsent());
+        } else {
+            throw new CustomException(ErrorCode.INVALID_INPUT_VALUE, "MetaLoginRequest 또는 MetaSignupRequest 타입이 필요합니다.");
         }
 
         // 1. Meta API에서 사용자 정보 조회
-        MetaUserInfo metaUserInfo = verifyMetaUser(metaRequest.metaAccessToken());
-        log.info("Meta 사용자 정보 확인 완료 - Meta User ID: {}, Platform: {}", metaUserInfo.id(), metaRequest.getPlatform());
+        MetaUserInfo metaUserInfo = verifyMetaUser(metaAccessToken);
+        log.info("Meta 사용자 정보 확인 완료 - Meta User ID: {}, Platform: {}", metaUserInfo.id(), platform);
 
         // 2. UserAccountLinkingService를 통해 통합 계정 처리
         UserAccountLinkingService.OAuthAccountInfo accountInfo = UserAccountLinkingService.OAuthAccountInfo.builder()
@@ -93,24 +109,35 @@ public class MetaOAuthService implements OAuthService {
                 .providerUserId(metaUserInfo.id())
                 .name(metaUserInfo.name())
                 .email(metaUserInfo.email())
-                .platform(metaRequest.getPlatform().name())
+                .platform(platform.name())
                 .profileImageUrl(metaUserInfo.getProfileImageUrl())
                 .build();
 
         UserAccountLinkingService.AccountLinkingResult result = userAccountLinkingService.handleUnifiedAccountScenario(accountInfo);
         User user = result.getUser();
+        
+        // 3. 회원가입 요청인 경우 동의 정보 저장
+        if (consents != null && result.getType() == UserAccountLinkingService.AccountLinkingType.NEW_USER_CREATED) {
+            log.info("신규 사용자 동의 정보 저장 - User ID: {}", user.getUserId());
+            user.getUserSettings().updateConsents(
+                    consents.sttConsent(),
+                    consents.aiConsent(),
+                    consents.dataTrainingConsent()
+            );
+        }
 
-        // 3. VR 플랫폼으로 접속했고, 아직 작가 권한이 없다면 작가로 승격
-        if (metaRequest.getPlatform() == Platform.VR && user.getArtistQualifiedAt() == null) {
+        // 4. VR 플랫폼으로 접속했고, 아직 작가 권한이 없다면 작가로 승격
+        if (platform == Platform.VR && user.getArtistQualifiedAt() == null) {
             log.info("사용자 {}를 ARTIST로 승격합니다.", user.getUserId());
             user.promoteToArtist();
         }
 
-        // 4. JWT 토큰 생성
+        // 5. JWT 토큰 생성
         String accessToken = jwtTokenProvider.createAccessToken(user.getUserId(), user.getRole());
         String refreshToken = jwtTokenProvider.createRefreshToken(user.getUserId());
 
-        log.info("Meta 인증 성공 - User ID: {}, 처리 타입: {}", user.getUserId(), result.getType());
+        String authType = consents != null ? "회원가입" : "로그인";
+        log.info("Meta {} 성공 - User ID: {}, 처리 타입: {}", authType, user.getUserId(), result.getType());
         return new AuthResponse(accessToken, refreshToken, user.getUserId(), user.getRole());
     }
 
