@@ -18,11 +18,35 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS postgis;
 
 -- ========== ENUM 타입 정의 (타입 안전성 확보) ==========
-CREATE TYPE userrole AS ENUM ('GUEST', 'USER', 'ARTIST', 'ADMIN');
-CREATE TYPE usermode AS ENUM ('AR', 'ARTIST');
-CREATE TYPE visibilitytype AS ENUM ('PRIVATE', 'PUBLIC');
-CREATE TYPE mediatype AS ENUM ('AUDIO', 'IMAGE', 'MODEL_3D', 'VIDEO');
-CREATE TYPE airequesttype AS ENUM ('BRUSH', 'PALETTE', 'CHATBOT');
+DO $$ BEGIN
+    CREATE TYPE userrole AS ENUM ('GUEST', 'USER', 'ARTIST', 'ADMIN');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE usermode AS ENUM ('AR', 'ARTIST');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE visibilitytype AS ENUM ('PRIVATE', 'PUBLIC');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE mediatype AS ENUM ('AUDIO', 'IMAGE', 'MODEL_3D', 'VIDEO');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE airequesttype AS ENUM ('BRUSH', 'PALETTE', 'CHATBOT');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- ========== 공통 트리거 함수 ==========
 CREATE OR REPLACE FUNCTION update_updated_at_column() RETURNS TRIGGER AS $$
