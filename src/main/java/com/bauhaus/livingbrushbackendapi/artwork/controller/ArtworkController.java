@@ -8,6 +8,7 @@ import com.bauhaus.livingbrushbackendapi.artwork.dto.ArtworkUpdateRequest;
 import com.bauhaus.livingbrushbackendapi.artwork.service.ArtworkService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -49,7 +50,8 @@ public class ArtworkController {
 
     @Operation(
             summary = "VR 작품 업로드 (간편 버전)",
-            description = "VR 기기에서 GLB 파일과 최소 메타데이터로 작품을 생성합니다. 제목은 자동 생성됩니다."
+            description = "VR 기기에서 GLB 파일과 최소 메타데이터로 작품을 생성합니다. 제목은 자동 생성됩니다.",
+            security = @SecurityRequirement(name = "JWT")
     )
     @PostMapping("/vr-upload")
     public ResponseEntity<ArtworkResponse> createVrArtwork(
@@ -77,7 +79,8 @@ public class ArtworkController {
 
     @Operation(
             summary = "GLB 파일과 함께 작품 생성 (상세 버전)",
-            description = "AR 앱이나 웹에서 상세 메타데이터와 함께 작품을 생성합니다."
+            description = "AR 앱이나 웹에서 상세 메타데이터와 함께 작품을 생성합니다.",
+            security = @SecurityRequirement(name = "JWT")
     )
     @PostMapping("/upload")
     public ResponseEntity<ArtworkResponse> createArtworkWithGlb(
@@ -93,7 +96,8 @@ public class ArtworkController {
 
     @Operation(
             summary = "메타데이터로 작품 생성",
-            description = "이미 업로드된 GLB URL을 포함한 메타데이터만으로 작품을 생성합니다."
+            description = "이미 업로드된 GLB URL을 포함한 메타데이터만으로 작품을 생성합니다.",
+            security = @SecurityRequirement(name = "JWT")
     )
     @PostMapping
     public ResponseEntity<ArtworkResponse> createArtworkWithMetadata(
@@ -112,7 +116,8 @@ public class ArtworkController {
 
     @Operation(
             summary = "독립 미디어를 작품에 연결",
-            description = "artwork_id가 NULL인 독립 미디어들을 특정 작품에 연결합니다."
+            description = "artwork_id가 NULL인 독립 미디어들을 특정 작품에 연결합니다.",
+            security = @SecurityRequirement(name = "JWT")
     )
     @PatchMapping("/{artworkId}/link-medias")
     public ResponseEntity<Void> linkMediasToArtwork(
@@ -128,7 +133,8 @@ public class ArtworkController {
 
     @Operation(
             summary = "작품 썸네일 설정",
-            description = "작품의 대표 썸네일 미디어를 설정합니다."
+            description = "작품의 대표 썸네일 미디어를 설정합니다.",
+            security = @SecurityRequirement(name = "JWT")
     )
     @PatchMapping("/{artworkId}/thumbnail/{mediaId}")
     public ResponseEntity<Void> setArtworkThumbnail(
@@ -148,7 +154,8 @@ public class ArtworkController {
 
     @Operation(
             summary = "작품 정보 수정",
-            description = "작품의 제목, 설명, 썸네일 등을 수정합니다."
+            description = "작품의 제목, 설명, 썸네일 등을 수정합니다.",
+            security = @SecurityRequirement(name = "JWT")
     )
     @PutMapping("/{artworkId}")
     public ResponseEntity<ArtworkResponse> updateArtwork(
@@ -164,7 +171,8 @@ public class ArtworkController {
 
     @Operation(
             summary = "작품 공개",
-            description = "작품을 공개 상태로 변경합니다."
+            description = "작품을 공개 상태로 변경합니다.",
+            security = @SecurityRequirement(name = "JWT")
     )
     @PatchMapping("/{artworkId}/publish")
     public ResponseEntity<ArtworkResponse> publishArtwork(
@@ -179,7 +187,8 @@ public class ArtworkController {
 
     @Operation(
             summary = "작품 비공개",
-            description = "작품을 비공개 상태로 변경합니다."
+            description = "작품을 비공개 상태로 변경합니다.",
+            security = @SecurityRequirement(name = "JWT")
     )
     @PatchMapping("/{artworkId}/unpublish")
     public ResponseEntity<ArtworkResponse> unpublishArtwork(

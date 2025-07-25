@@ -122,7 +122,13 @@ public enum ErrorCode {
     TAG_NAME_TOO_LONG(HttpStatus.BAD_REQUEST, "T005", "태그명은 50자를 초과할 수 없습니다."),
     TAG_NAME_EMPTY(HttpStatus.BAD_REQUEST, "T006", "태그명을 입력해주세요."),
     DUPLICATE_TAG_SELECTION(HttpStatus.BAD_REQUEST, "T007", "중복된 태그가 선택되었습니다."),
-    TAG_SAVE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "T008", "태그 저장에 실패했습니다.");
+    TAG_SAVE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "T008", "태그 저장에 실패했습니다."),
+
+    // ========== VR 로그인 (VR Login) ==========
+    VR_LOGIN_TOKEN_NOT_FOUND(HttpStatus.UNAUTHORIZED, "V001", "VR 로그인 토큰을 찾을 수 없습니다."),
+    VR_LOGIN_TOKEN_EXPIRED(HttpStatus.GONE, "V002", "VR 로그인 토큰이 만료되었습니다."),
+    VR_LOGIN_TOKEN_ALREADY_USED(HttpStatus.CONFLICT, "V003", "이미 사용된 VR 로그인 토큰입니다."),
+    VR_QR_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "V004", "VR 로그인 QR 코드 생성에 실패했습니다.");
 
 
     private final HttpStatus status;

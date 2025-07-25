@@ -1,15 +1,13 @@
 package com.bauhaus.livingbrushbackendapi.auth.controller;
 
-import com.bauhaus.livingbrushbackendapi.auth.dto.GoogleLoginRequest;
-import com.bauhaus.livingbrushbackendapi.auth.dto.MetaLoginRequest;
-import com.bauhaus.livingbrushbackendapi.auth.dto.MetaSignupRequest;
-import com.bauhaus.livingbrushbackendapi.auth.dto.TokenRefreshRequest;
-import com.bauhaus.livingbrushbackendapi.auth.dto.AuthResponse;
+import com.bauhaus.livingbrushbackendapi.auth.dto.*;
 import com.bauhaus.livingbrushbackendapi.auth.service.AuthFacadeService;
 import com.bauhaus.livingbrushbackendapi.auth.service.AuthService;
+import com.bauhaus.livingbrushbackendapi.auth.service.VrAuthService;
 import com.bauhaus.livingbrushbackendapi.user.entity.enumeration.Provider;
 import com.bauhaus.livingbrushbackendapi.exception.common.CustomException;
 import com.bauhaus.livingbrushbackendapi.exception.common.ErrorCode;
+import com.bauhaus.livingbrushbackendapi.security.jwt.JwtTokenProvider;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -18,6 +16,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @Slf4j
@@ -29,6 +28,8 @@ public class AuthController {
 
     private final AuthFacadeService authFacadeService;
     private final AuthService authService; // 토큰 갱신 등 공통 인증 로직 담당
+    private final VrAuthService vrAuthService; // VR QR 로그인 전용 서비스
+    private final JwtTokenProvider jwtTokenProvider; // JWT에서 사용자 ID 추출용
 
     @PostMapping("/signup/meta")
     @Operation(summary = "Meta VR 회원가입", description = "Meta Access Token과 동의 정보로 회원가입합니다.")
@@ -107,5 +108,63 @@ public class AuthController {
     public ResponseEntity<String> health() {
         // 어떤 서비스도 호출하지 않고, 즉시 "OK"를 반환하여 외부 의존성을 제거합니다.
         return ResponseEntity.ok("OK");
+    }
+
+    @PostMapping("/vr-login-manual")
+    @Operation(summary = "VR 수동 코드 로그인", description = "VR 기기에서 4자리 숫자 코드를 입력하여 즉시 로그인합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "VR 수동 로그인 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 코드 형식"),
+            @ApiResponse(responseCode = "401", description = "유효하지 않은 코드"),
+            @ApiResponse(responseCode = "410", description = "만료된 코드"),
+            @ApiResponse(responseCode = "409", description = "이미 사용된 코드")
+    })
+    public ResponseEntity<VrLoginResponse> vrManualLogin(@Valid @RequestBody VrManualLoginRequest request) {
+        log.info("VR 수동 코드 로그인 요청 - Code: {}", request.getManualCode());
+
+        VrLoginResponse response = vrAuthService.loginWithManualCode(request.getManualCode());
+        log.info("VR 수동 코드 로그인 성공 - User ID: {}, Role: {}", response.userId(), response.role());
+
+        return ResponseEntity.ok(response);
+    }
+
+    // ========== VR QR 로그인 시스템 ==========
+
+    @PostMapping("/vr-login-qr")
+    @Operation(summary = "VR 로그인용 QR 코드 생성", description = "AR 앱에서 VR 기기 로그인을 위한 QR 코드를 생성합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "QR 코드 생성 성공"),
+            @ApiResponse(responseCode = "401", description = "인증되지 않은 사용자"),
+            @ApiResponse(responseCode = "500", description = "QR 코드 생성 실패")
+    })
+    public ResponseEntity<VrLoginQrResponse> generateVrLoginQr(
+            @Valid @RequestBody VrLoginQrRequest request,
+            Authentication authentication) {
+        
+        // JWT에서 사용자 ID 추출
+        Long userId = jwtTokenProvider.getUserIdFromAuthentication(authentication);
+        log.info("VR 로그인 QR 생성 요청 - User ID: {}", userId);
+        
+        VrLoginQrResponse response = vrAuthService.generateVrLoginQr(userId);
+        log.info("VR 로그인 QR 생성 성공 - User ID: {}, Token: {}", userId, response.getVrLoginToken());
+        
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/vr-login")
+    @Operation(summary = "VR QR 토큰 로그인", description = "VR 기기에서 QR 코드를 스캔하여 즉시 로그인합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "VR 로그인 성공"),
+            @ApiResponse(responseCode = "401", description = "유효하지 않은 토큰"),
+            @ApiResponse(responseCode = "410", description = "만료된 토큰"),
+            @ApiResponse(responseCode = "409", description = "이미 사용된 토큰")
+    })
+    public ResponseEntity<VrLoginResponse> vrLogin(@Valid @RequestBody VrLoginRequest request) {
+        log.info("VR 토큰 로그인 요청 - Token: {}", request.getVrLoginToken());
+        
+        VrLoginResponse response = vrAuthService.loginWithVrToken(request.getVrLoginToken());
+        log.info("VR 토큰 로그인 성공 - User ID: {}, Role: {}", response.userId(), response.role());
+        
+        return ResponseEntity.ok(response);
     }
 }

@@ -29,8 +29,10 @@ public class JwtTokenProvider {
 
     private static final String ROLE_CLAIM = "role";
     private static final String TOKEN_TYPE_CLAIM = "tokenType";
+    private static final String PLATFORM_CLAIM = "platform"; // VR 전용 클레임
     private static final String ACCESS_TOKEN_TYPE = "access";
     private static final String REFRESH_TOKEN_TYPE = "refresh";
+    private static final String VR_PLATFORM = "VR"; // VR 플랫폼 식별자
 
     public JwtTokenProvider(
             @Value("${jwt.secret}") String secret,
@@ -55,6 +57,26 @@ public class JwtTokenProvider {
         Map<String, Object> claims = new HashMap<>();
         claims.put(TOKEN_TYPE_CLAIM, REFRESH_TOKEN_TYPE);
         return generateToken(userId.toString(), refreshTokenValidityInMilliseconds, claims);
+    }
+
+    /**
+     * VR 환경에 최적화된 액세스 토큰을 생성합니다.
+     * 
+     * 기존 createAccessToken과 동일한 구조이지만, VR 플랫폼 식별자를 추가로 포함합니다.
+     * 향후 VR 전용 기능이나 권한 관리가 필요할 때 활용할 수 있습니다.
+     * 
+     * @param userId 사용자 ID
+     * @param userRole 사용자 권한
+     * @return VR 전용 JWT 액세스 토큰
+     */
+    public String createVrAccessToken(Long userId, UserRole userRole) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put(ROLE_CLAIM, userRole.name());
+        claims.put(TOKEN_TYPE_CLAIM, ACCESS_TOKEN_TYPE);
+        claims.put(PLATFORM_CLAIM, VR_PLATFORM); // VR 플랫폼 식별자 추가
+        
+        log.debug("VR 액세스 토큰 생성 - User ID: {}, Role: {}", userId, userRole);
+        return generateToken(userId.toString(), accessTokenValidityInMilliseconds, claims);
     }
 
     public Long getUserIdFromToken(String token) {
@@ -91,7 +113,6 @@ public class JwtTokenProvider {
         }
     }
 
-    // ✨ 이 메소드를 추가해주세요.
     /**
      * Spring Security의 Authentication 객체에서 사용자 ID를 안전하게 추출합니다.
      * 컨트롤러에서 인증된 사용자의 ID를 쉽게 가져올 수 있도록 돕는 편의 메소드입니다.
@@ -106,6 +127,35 @@ public class JwtTokenProvider {
             throw new CustomException(ErrorCode.ACCESS_DENIED, "유효한 사용자 인증 정보가 없습니다.");
         }
         return (Long) authentication.getPrincipal();
+    }
+
+    /**
+     * 토큰에서 플랫폼 정보를 추출합니다.
+     * 
+     * VR 전용 토큰인지 확인하거나, 플랫폼별 로직 분기에 활용할 수 있습니다.
+     * 
+     * @param token JWT 토큰
+     * @return 플랫폼 식별자 (VR, 또는 null)
+     */
+    public String getPlatformFromToken(String token) {
+        try {
+            Claims claims = getClaimsFromToken(token);
+            return claims.get(PLATFORM_CLAIM, String.class);
+        } catch (CustomException e) {
+            log.debug("토큰에서 플랫폼 정보 추출 실패: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * VR 플랫폼에서 생성된 토큰인지 확인합니다.
+     * 
+     * @param token JWT 토큰
+     * @return VR 토큰이면 true, 아니면 false
+     */
+    public boolean isVrToken(String token) {
+        String platform = getPlatformFromToken(token);
+        return VR_PLATFORM.equals(platform);
     }
 
     private Claims getClaimsFromToken(String token) {

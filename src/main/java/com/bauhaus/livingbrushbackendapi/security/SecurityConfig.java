@@ -50,6 +50,7 @@ public class SecurityConfig {
 
             // --- Development ---
             "/api/dev/**", // 개발용 테스트 API 경로
+            "/api/ai/**", // 개발용 AI API 테스트 (임시)
 
             // --- Static Resources ---
             "/qr-images/**" // QR 코드 이미지 경로

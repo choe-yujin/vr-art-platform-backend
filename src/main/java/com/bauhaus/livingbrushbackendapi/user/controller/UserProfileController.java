@@ -9,6 +9,7 @@ import com.bauhaus.livingbrushbackendapi.user.dto.response.UserStatsResponse;
 import com.bauhaus.livingbrushbackendapi.user.service.UserProfileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -47,7 +48,9 @@ public class UserProfileController {
      * 
      * 현재 로그인한 사용자의 프로필 정보를 반환합니다.
      */
-    @Operation(summary = "내 프로필 조회", description = "현재 로그인한 사용자의 프로필 정보를 조회합니다.")
+    @Operation(summary = "내 프로필 조회", 
+               description = "현재 로그인한 사용자의 프로필 정보를 조회합니다.",
+               security = @SecurityRequirement(name = "JWT"))
     @GetMapping("/me")
     public ResponseEntity<UserProfileResponse> getMyProfile(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
@@ -65,7 +68,9 @@ public class UserProfileController {
      * 
      * 닉네임, 소개, 공개 설정을 수정합니다.
      */
-    @Operation(summary = "프로필 정보 수정", description = "닉네임, 소개, 공개 설정을 수정합니다.")
+    @Operation(summary = "프로필 정보 수정", 
+               description = "닉네임, 소개, 공개 설정을 수정합니다.",
+               security = @SecurityRequirement(name = "JWT"))
     @PutMapping("/me")
     public ResponseEntity<UserProfileResponse> updateProfile(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
@@ -84,7 +89,9 @@ public class UserProfileController {
      * 
      * 새로운 프로필 이미지를 업로드하고 S3에 저장합니다.
      */
-    @Operation(summary = "프로필 이미지 업로드", description = "프로필 이미지를 업로드하고 S3에 저장합니다.")
+    @Operation(summary = "프로필 이미지 업로드", 
+               description = "프로필 이미지를 업로드하고 S3에 저장합니다.",
+               security = @SecurityRequirement(name = "JWT"))
     @PostMapping(value = "/me/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ProfileImageUploadResponse> uploadProfileImage(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
@@ -105,7 +112,9 @@ public class UserProfileController {
      * 
      * 소개 공개 여부, 가입일 공개 여부를 개별적으로 설정합니다.
      */
-    @Operation(summary = "프로필 공개 설정 변경", description = "소개 공개 여부, 가입일 공개 여부를 설정합니다.")
+    @Operation(summary = "프로필 공개 설정 변경", 
+               description = "소개 공개 여부, 가입일 공개 여부를 설정합니다.",
+               security = @SecurityRequirement(name = "JWT"))
     @PutMapping("/me/privacy")
     public ResponseEntity<UserProfileResponse> updatePrivacySettings(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
@@ -168,7 +177,9 @@ public class UserProfileController {
      * 
      * 현재 로그인한 사용자 자신의 통계 정보를 조회합니다.
      */
-    @Operation(summary = "내 통계 조회", description = "현재 로그인한 사용자의 통계 정보를 조회합니다.")
+    @Operation(summary = "내 통계 조회", 
+               description = "현재 로그인한 사용자의 통계 정보를 조회합니다.",
+               security = @SecurityRequirement(name = "JWT"))
     @GetMapping("/me/stats")
     public ResponseEntity<UserStatsResponse> getMyStats(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {

@@ -8,6 +8,7 @@ import com.bauhaus.livingbrushbackendapi.media.entity.enumeration.MediaType;
 import com.bauhaus.livingbrushbackendapi.media.service.MediaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -46,7 +47,8 @@ public class MediaController {
     @Operation(
         summary = "미디어 파일 업로드",
         description = "VR/AR에서 촬영한 미디어 파일(이미지, 비디오, 오디오, 3D 모델)을 업로드합니다. " +
-                     "작품과 연결하거나 독립적으로 저장할 수 있습니다."
+                     "작품과 연결하거나 독립적으로 저장할 수 있습니다.",
+        security = @SecurityRequirement(name = "JWT")
     )
     @PostMapping(value = "/upload", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<MediaUploadResponse> uploadMedia(
@@ -83,7 +85,8 @@ public class MediaController {
 
     @Operation(
         summary = "미디어를 작품에 연결",
-        description = "독립적으로 생성된 미디어를 기존 작품과 연결합니다."
+        description = "독립적으로 생성된 미디어를 기존 작품과 연결합니다.",
+        security = @SecurityRequirement(name = "JWT")
     )
     @PatchMapping("/{mediaId}/link-to-artwork")
     public ResponseEntity<Void> linkMediaToArtwork(
@@ -104,7 +107,8 @@ public class MediaController {
 
     @Operation(
         summary = "미디어와 작품 연결 해제",
-        description = "미디어와 작품의 연결을 해제하여 독립 미디어로 만듭니다."
+        description = "미디어와 작품의 연결을 해제하여 독립 미디어로 만듭니다.",
+        security = @SecurityRequirement(name = "JWT")
     )
     @PatchMapping("/{mediaId}/unlink-from-artwork")
     public ResponseEntity<Void> unlinkMediaFromArtwork(
@@ -143,7 +147,8 @@ public class MediaController {
 
     @Operation(
         summary = "사용자의 독립 미디어 조회",
-        description = "작품에 연결되지 않은 독립 미디어들을 조회합니다."
+        description = "작품에 연결되지 않은 독립 미디어들을 조회합니다.",
+        security = @SecurityRequirement(name = "JWT")
     )
     @GetMapping("/user/{userId}/unlinked")
     public ResponseEntity<List<MediaListResponse>> getUnlinkedMedia(
@@ -173,7 +178,8 @@ public class MediaController {
 
     @Operation(
         summary = "사용자의 특정 타입 미디어 조회",
-        description = "사용자의 특정 타입(AUDIO, IMAGE, MODEL_3D, VIDEO) 미디어만 조회합니다."
+        description = "사용자의 특정 타입(AUDIO, IMAGE, MODEL_3D, VIDEO) 미디어만 조회합니다.",
+        security = @SecurityRequirement(name = "JWT")
     )
     @GetMapping("/user/{userId}/type/{mediaType}")
     public ResponseEntity<List<MediaListResponse>> getUserMediaByType(
@@ -195,7 +201,8 @@ public class MediaController {
 
     @Operation(
         summary = "미디어 공개",
-        description = "미디어를 공개 상태로 변경합니다."
+        description = "미디어를 공개 상태로 변경합니다.",
+        security = @SecurityRequirement(name = "JWT")
     )
     @PatchMapping("/{mediaId}/publish")
     public ResponseEntity<Void> publishMedia(
@@ -213,7 +220,8 @@ public class MediaController {
 
     @Operation(
         summary = "미디어 비공개",
-        description = "미디어를 비공개 상태로 변경합니다."
+        description = "미디어를 비공개 상태로 변경합니다.",
+        security = @SecurityRequirement(name = "JWT")
     )
     @PatchMapping("/{mediaId}/unpublish")
     public ResponseEntity<Void> unpublishMedia(
