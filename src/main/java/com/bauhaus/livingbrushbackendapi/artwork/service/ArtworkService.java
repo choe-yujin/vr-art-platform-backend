@@ -21,7 +21,9 @@ import com.bauhaus.livingbrushbackendapi.common.service.ArtworkIdGenerator;
 import com.bauhaus.livingbrushbackendapi.tag.entity.Tag;
 import com.bauhaus.livingbrushbackendapi.tag.repository.TagRepository;
 import com.bauhaus.livingbrushbackendapi.user.entity.User;
+import com.bauhaus.livingbrushbackendapi.user.entity.UserProfile;
 import com.bauhaus.livingbrushbackendapi.user.repository.UserRepository;
+import com.bauhaus.livingbrushbackendapi.user.repository.UserProfileRepository;
 import com.bauhaus.livingbrushbackendapi.qrcode.repository.QrCodeRepository;
 import com.bauhaus.livingbrushbackendapi.qrcode.entity.QrCode;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 작품(Artwork) 비즈니스 로직 서비스
@@ -63,6 +66,8 @@ public class ArtworkService {
     private final QrCodeRepository qrCodeRepository;
     private final FileNameGenerator fileNameGenerator;
     private final ArtworkIdGenerator artworkIdGenerator;
+    // 🎯 작가 프로필 정보 조회를 위한 Repository 추가
+    private final UserProfileRepository userProfileRepository;
 
     // ====================================================================
     // ✨ 작품 생성 로직 (시나리오 지원)
@@ -459,6 +464,7 @@ public class ArtworkService {
     /**
      * 특정 작품 상세 조회 (공개 작품 또는 소유자만 접근 가능)
      * QR 코드를 통한 비회원 접근(requestUserId = null) 지원
+     * 🎯 작가 프로필 정보 포함
      */
     public ArtworkResponse getArtworkById(Long artworkId, Long requestUserId) {
         log.info("작품 상세 조회 요청 - 작품 ID: {}, 요청자 ID: {}", artworkId, requestUserId);
@@ -489,7 +495,28 @@ public class ArtworkService {
         // QR 이미지 URL 조회 (공개 작품인 경우에만)
         String qrImageUrl = getQrImageUrlForArtwork(artwork);
 
-        return ArtworkResponse.from(artwork, qrImageUrl);
+        // 🎯 작가 프로필 정보 조회
+        String profileImageUrl = null;
+        String bio = null;
+        try {
+            Optional<UserProfile> userProfile = userProfileRepository.findByUserIdWithUser(artwork.getUser().getUserId());
+            if (userProfile.isPresent()) {
+                UserProfile profile = userProfile.get();
+                profileImageUrl = profile.getProfileImageUrl();
+                bio = profile.isBioPublic() ? profile.getBio() : null; // 비공개 설정 시 null
+                log.debug("작가 프로필 정보 조회 성공 - 사용자 ID: {}, 프로필 이미지: {}, bio 공개: {}", 
+                         artwork.getUser().getUserId(), 
+                         profileImageUrl != null ? "있음" : "없음",
+                         profile.isBioPublic());
+            } else {
+                log.warn("작가 프로필 정보 없음 - 사용자 ID: {}", artwork.getUser().getUserId());
+            }
+        } catch (Exception e) {
+            log.warn("작가 프로필 정보 조회 중 오류 발생 (기본값 사용) - 사용자 ID: {}, 오류: {}", 
+                    artwork.getUser().getUserId(), e.getMessage());
+        }
+
+        return ArtworkResponse.from(artwork, qrImageUrl, profileImageUrl, bio);
     }
 
     /**
