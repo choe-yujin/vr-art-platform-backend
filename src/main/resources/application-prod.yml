@@ -101,6 +101,18 @@ ai:
   server:
     url: ${AI_SERVER_URL}
 
+# ===================================================================
+# Swagger/OpenAPI 3 Configuration for Production
+# ===================================================================
+springdoc:
+  swagger-ui:
+    # HTTPS 서버 URL 명시적 설정
+    servers:
+      - url: https://api.livingbrush.shop
+        description: Production Server (HTTPS)
+  api-docs:
+    path: /v3/api-docs
+
 logging:
   level:
     root: INFO
