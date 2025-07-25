@@ -429,12 +429,14 @@ DO $$
             VALUES (v_test_user_id, true, true, true)
             ON CONFLICT (user_id) DO NOTHING;
 
-            INSERT INTO user_profiles (user_id, bio, bio_public, join_date_public)
-            VALUES (v_test_user_id, 'VR 아티스트입니다!', true, true)
-            ON CONFLICT (user_id) DO NOTHING;
+            INSERT INTO user_profiles (user_id, profile_image_url, bio, bio_public, join_date_public)
+            VALUES (v_test_user_id, 'https://livingbrush-storage.s3.ap-northeast-2.amazonaws.com/profiles/user-1/profile_750e2cc34b88456b94f17023234459a2.png', '안녕하세요! VR로 3D 아트를 창작하는 아티스트입니다. 가상현실에서 그린 작품들을 AR로 현실에 가져와 새로운 예술 경험을 만들어가고 있어요. 🎨✨', true, true)
+            ON CONFLICT (user_id) DO UPDATE SET
+                profile_image_url = EXCLUDED.profile_image_url,
+                bio = EXCLUDED.bio;
 
             INSERT INTO artworks (user_id, title, description, glb_url, visibility)
-            VALUES (v_test_user_id, 'VR 샘플 작품', 'QR 테스트용 샘플 작품입니다', 'http://localhost:8888/static-files/artworks/Untitled__2.glb', 'PUBLIC')
+            VALUES (v_test_user_id, 'VR 샘플 작품', 'QR 테스트용 샘플 작품입니다', 'https://livingbrush-storage.s3.ap-northeast-2.amazonaws.com/artworks/user-1/artwork-1/models/sample.glb', 'PUBLIC')
             ON CONFLICT DO NOTHING;
         END IF;
     END
