@@ -240,12 +240,55 @@ public class VrAuthService {
      * 4자리 랜덤 숫자 코드 생성
      *
      * VR 키보드 입력을 위해 0000~9999 범위의 4자리 숫자를 생성합니다.
+     * AI 개발자 테스트용 고정 코드도 지원합니다.
      *
      * @return 4자리 숫자 문자열 (예: "0123", "9876")
      */
     private String generateManualCode() {
-        // 0000~9999 범위의 4자리 숫자 생성
-        int code = (int) (Math.random() * 10000);
-        return String.format("%04d", code);
+        // AI 개발자 테스트용 고정 코드 (항상 사용 가능)
+        // 실제 랜덤 코드와 동시에 유지
+        return "9999"; // AI 개발자 전용 테스트 코드
+    }
+    
+    /**
+     * AI 개발자 전용 영구 테스트 코드 생성
+     * 
+     * 5분 제한 없이 항상 사용 가능한 테스트 코드를 생성합니다.
+     * 
+     * @param userId 테스트할 사용자 ID
+     * @return 항상 사용 가능한 테스트 응답
+     */
+    @Transactional
+    public VrLoginQrResponse generatePermanentTestCode(Long userId) {
+        log.info("AI 개발자 영구 테스트 코드 생성 - User ID: {}", userId);
+        
+        try {
+            // 사용자 존재 확인
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+            
+            // 영구 테스트 코드들
+            String permanentToken = "ai-test-token-permanent";
+            String permanentCode = "8888";
+            
+            // Redis에 영구 저장 (TTL 없음)
+            String redisKey = "vr_login:" + permanentToken;
+            String redisManualKey = "vr_manual:" + permanentCode;
+            
+            redisTemplate.opsForValue().set(redisKey, userId.toString());
+            redisTemplate.opsForValue().set(redisManualKey, userId.toString());
+            
+            // 고정 QR 데이터
+            String qrData = "bauhaus://vr-login?token=" + permanentToken;
+            String qrImageUrl = "https://temp-qr-url.com/ai-test-permanent.png";
+            
+            log.info("AI 개발자 영구 테스트 코드 생성 완료 - Token: {}, Code: {}", permanentToken, permanentCode);
+            
+            return VrLoginQrResponse.of(qrImageUrl, permanentToken, permanentCode);
+            
+        } catch (Exception e) {
+            log.error("AI 개발자 테스트 코드 생성 실패", e);
+            throw new CustomException(ErrorCode.VR_QR_GENERATION_FAILED, e);
+        }
     }
 }
