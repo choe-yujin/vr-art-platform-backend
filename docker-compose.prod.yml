@@ -30,7 +30,6 @@ services:
       - .env.prod
     ports:
       # EC2의 80번 포트(HTTP)를 컨테이너의 8888번 포트로 연결합니다.
-      - "80:8888"
       - "8888:8888"
     volumes:
       # EC2 호스트의 특정 경로와 컨테이너의 static-files를 연결하여 파일을 영속화합니다.
