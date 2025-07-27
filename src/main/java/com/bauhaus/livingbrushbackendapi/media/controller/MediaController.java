@@ -101,7 +101,7 @@ public class MediaController {
         log.info("미디어-작품 연결 요청 - 미디어 ID: {}, 작품 ID: {}, 사용자: {}", 
                 mediaId, request.getArtworkId(), userId);
 
-        mediaService.linkMediaToArtwork(mediaId, request.getArtworkId(), userId);
+        mediaService.linkMediaToArtwork(userId, mediaId, request.getArtworkId());
         return ResponseEntity.ok().build();
     }
 
@@ -214,7 +214,7 @@ public class MediaController {
 
         log.info("미디어 공개 요청 - 미디어 ID: {}, 사용자: {}", mediaId, userId);
 
-        mediaService.publishMedia(mediaId, userId);
+        mediaService.publishMedia(userId, mediaId);
         return ResponseEntity.ok().build();
     }
 
@@ -233,7 +233,7 @@ public class MediaController {
 
         log.info("미디어 비공개 요청 - 미디어 ID: {}, 사용자: {}", mediaId, userId);
 
-        mediaService.unpublishMedia(mediaId, userId);
+        mediaService.unpublishMedia(userId, mediaId);
         return ResponseEntity.ok().build();
     }
 

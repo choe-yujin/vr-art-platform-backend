@@ -81,14 +81,6 @@ public interface MediaRepository extends JpaRepository<Media, Long> {
      */
     long countByArtwork_ArtworkId(Long artworkId);
 
-
-    /**
-     * findByMediaId 대신 명시
-     */
-    @Query("SELECT m FROM Media m LEFT JOIN FETCH m.user LEFT JOIN FETCH m.artwork WHERE m.mediaId = :mediaId")
-    Optional<Media> findByIdWithRelations(@Param("mediaId") Long mediaId);
-
-
     // ====================================================================
     // ✨ 관리용 쿼리들
     // ====================================================================
