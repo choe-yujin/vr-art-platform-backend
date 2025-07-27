@@ -70,6 +70,8 @@ public class ArtworkService {
     private final ArtworkIdGenerator artworkIdGenerator;
     // 🎯 작가 프로필 정보 조회를 위한 Repository 추가
     private final UserProfileRepository userProfileRepository;
+    // 댓글 수 조회를 위한 Repository 추가
+    private final com.bauhaus.livingbrushbackendapi.social.repository.CommentRepository commentRepository;
 
     // ====================================================================
     // ✨ 작품 생성 로직 (시나리오 지원)
@@ -518,7 +520,10 @@ public class ArtworkService {
                     artwork.getUser().getUserId(), e.getMessage());
         }
 
-        return ArtworkResponse.from(artwork, qrImageUrl, profileImageUrl, bio);
+        // 댓글 수 조회
+        int commentCount = commentRepository.countByArtworkIdAndIsDeletedFalse(artwork.getArtworkId());
+
+        return ArtworkResponse.from(artwork, qrImageUrl, profileImageUrl, bio, commentCount);
     }
 
     /**

@@ -34,6 +34,7 @@ public class ArtworkResponse {
     private BigDecimal priceCash;
     private int favoriteCount;
     private int viewCount;
+    private int commentCount;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     
@@ -49,7 +50,7 @@ public class ArtworkResponse {
     @Builder
     private ArtworkResponse(Long artworkId, Long userId, String userNickname, String title, String description,
                            String glbUrl, Long thumbnailMediaId, String thumbnailUrl, VisibilityType visibility,
-                           BigDecimal priceCash, int favoriteCount, int viewCount, LocalDateTime createdAt,
+                           BigDecimal priceCash, int favoriteCount, int viewCount, int commentCount, LocalDateTime createdAt,
                            LocalDateTime updatedAt, boolean isPublic, boolean isPaid, boolean hasThumbnail,
                            String qrImageUrl, UserInfo user) {
         this.artworkId = artworkId;
@@ -64,6 +65,7 @@ public class ArtworkResponse {
         this.priceCash = priceCash;
         this.favoriteCount = favoriteCount;
         this.viewCount = viewCount;
+        this.commentCount = commentCount;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.isPublic = isPublic;
@@ -117,9 +119,9 @@ public class ArtworkResponse {
     }
 
     /**
-     * 🎯 Artwork 엔티티로부터 DTO 생성 (작가 프로필 정보 포함)
+     * 🎯 Artwork 엔티티로부터 DTO 생성 (작가 프로필 정보 및 댓글 수 포함)
      */
-    public static ArtworkResponse from(Artwork artwork, String qrImageUrl, String profileImageUrl, String bio) {
+    public static ArtworkResponse from(Artwork artwork, String qrImageUrl, String profileImageUrl, String bio, int commentCount) {
         // 작가 정보 생성
         UserInfo userInfo = UserInfo.of(
                 artwork.getUser().getUserId(),
@@ -141,6 +143,7 @@ public class ArtworkResponse {
                 .priceCash(artwork.getPriceCash())
                 .favoriteCount(artwork.getFavoriteCount())
                 .viewCount(artwork.getViewCount())
+                .commentCount(commentCount)
                 .createdAt(artwork.getCreatedAt())
                 .updatedAt(artwork.getUpdatedAt())
                 .isPublic(artwork.isPublic())
@@ -176,6 +179,7 @@ public class ArtworkResponse {
                 .priceCash(artwork.getPriceCash())
                 .favoriteCount(artwork.getFavoriteCount())
                 .viewCount(artwork.getViewCount())
+                .commentCount(0) // 기존 호환성을 위해 0으로 설정
                 .createdAt(artwork.getCreatedAt())
                 .updatedAt(artwork.getUpdatedAt())
                 .isPublic(artwork.isPublic())
