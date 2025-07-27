@@ -113,7 +113,16 @@ public class Media extends BaseEntity {
         if (user == null || this.user == null) {
             return false;
         }
-        return this.user.equals(user);
+        
+        // 🔍 디버깅 로그 추가
+        boolean result = this.user.equals(user);
+        System.out.println("[DEBUG] Media.isOwnedBy - this.user ID: " + this.user.getUserId() + 
+                          ", param user ID: " + user.getUserId() + 
+                          ", this.user class: " + this.user.getClass().getSimpleName() +
+                          ", param user class: " + user.getClass().getSimpleName() +
+                          ", equals result: " + result);
+        
+        return result;
     }
 
     /**
