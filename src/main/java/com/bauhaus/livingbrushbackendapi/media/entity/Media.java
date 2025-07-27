@@ -108,21 +108,15 @@ public class Media extends BaseEntity {
 
     /**
      * 이 미디어의 소유권을 확인합니다.
+     * 프록시 객체 문제를 방지하기 위해 ID 기반으로 비교합니다.
      */
     public boolean isOwnedBy(User user) {
         if (user == null || this.user == null) {
             return false;
         }
         
-        // 🔍 디버깅 로그 추가
-        boolean result = this.user.equals(user);
-        System.out.println("[DEBUG] Media.isOwnedBy - this.user ID: " + this.user.getUserId() + 
-                          ", param user ID: " + user.getUserId() + 
-                          ", this.user class: " + this.user.getClass().getSimpleName() +
-                          ", param user class: " + user.getClass().getSimpleName() +
-                          ", equals result: " + result);
-        
-        return result;
+        // ID 기반 비교로 변경 (프록시 객체 문제 해결)
+        return Objects.equals(this.user.getUserId(), user.getUserId());
     }
 
     /**

@@ -265,37 +265,16 @@ public class MediaService {
     }
 
     private void validateMediaOwnership(Media media, User user) {
-        // 🔍 디버깅 로그 추가
-        log.debug("미디어 소유권 검증 시작 - 미디어 ID: {}, 요청 사용자 ID: {}", 
+        log.debug("미디어 소유권 검증 - 미디어 ID: {}, 요청 사용자 ID: {}", 
                 media.getMediaId(), user.getUserId());
         
-        // Media의 User 정보 확인
-        User mediaOwner = media.getUser();
-        log.debug("미디어 소유자 정보 - ID: {}, 클래스: {}", 
-                mediaOwner != null ? mediaOwner.getUserId() : "null", 
-                mediaOwner != null ? mediaOwner.getClass().getSimpleName() : "null");
-        
-        // 요청한 User 정보 확인
-        log.debug("요청 사용자 정보 - ID: {}, 클래스: {}", 
-                user.getUserId(), user.getClass().getSimpleName());
-        
-        // ID 직접 비교
-        boolean userIdMatch = mediaOwner != null && mediaOwner.getUserId().equals(user.getUserId());
-        log.debug("사용자 ID 직접 비교 결과: {}", userIdMatch);
-        
-        // isOwnedBy 메서드 결과 확인
-        boolean isOwnedByResult = media.isOwnedBy(user);
-        log.debug("isOwnedBy 메서드 결과: {}", isOwnedByResult);
-        
-        if (!isOwnedByResult) {
-            log.error("미디어 소유권 검증 실패 - 미디어 ID: {}, 미디어 소유자 ID: {}, 요청 사용자 ID: {}", 
-                    media.getMediaId(), 
-                    mediaOwner != null ? mediaOwner.getUserId() : "null", 
-                    user.getUserId());
+        if (!media.isOwnedBy(user)) {
+            log.error("미디어 소유권 검증 실패 - 미디어 ID: {}, 요청 사용자 ID: {}", 
+                    media.getMediaId(), user.getUserId());
             throw new CustomException(ErrorCode.MEDIA_NOT_OWNED_BY_USER);
         }
         
-        log.debug("미디어 소유권 검증 성공");
+        log.debug("미디어 소유권 검증 성공 - 미디어 ID: {}", media.getMediaId());
     }
 
     private void validateArtworkOwnership(Artwork artwork, User user) {
