@@ -260,7 +260,7 @@ public class MediaService {
     }
 
     private Media findMediaById(Long mediaId) {
-        return mediaRepository.findById(mediaId)
+        return mediaRepository.findByIdWithRelations(mediaId) // findById 대신
                 .orElseThrow(() -> new CustomException(ErrorCode.MEDIA_NOT_FOUND));
     }
 
