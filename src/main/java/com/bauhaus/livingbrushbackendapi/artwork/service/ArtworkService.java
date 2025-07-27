@@ -29,7 +29,9 @@ import com.bauhaus.livingbrushbackendapi.qrcode.entity.QrCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -524,25 +526,27 @@ public class ArtworkService {
      * 본인인 경우 모든 작품, 다른 사용자인 경우 공개 작품만 조회
      * 비회원(requestUserId = null)인 경우 공개 작품만 조회
      */
-    public Page<ArtworkListResponse> getArtworksByUser(Long userId, Long requestUserId, Pageable pageable) {
+    public Page<ArtworkListResponse> getArtworksByUser(Long userId, Long requestUserId, int page, int size) {
         log.info("사용자 작품 목록 조회 - 사용자 ID: {}, 요청자 ID: {}", userId, requestUserId);
 
         // 본인인 경우에만 모든 작품 조회 (비회원은 제외)
         if (requestUserId != null && requestUserId.equals(userId)) {
+            Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
             Page<Artwork> artworks = artworkRepository.findByUser_UserIdOrderByCreatedAtDesc(userId, pageable);
             return artworks.map(ArtworkListResponse::from);
         }
 
         // 다른 사용자이거나 비회원인 경우 공개 작품만 조회
-        return getPublicArtworksByUser(userId, pageable);
+        return getPublicArtworksByUser(userId, page, size);
     }
 
     /**
      * 사용자의 공개 작품만 조회 (페이징)
      */
-    public Page<ArtworkListResponse> getPublicArtworksByUser(Long userId, Pageable pageable) {
+    public Page<ArtworkListResponse> getPublicArtworksByUser(Long userId, int page, int size) {
         log.info("사용자 공개 작품 목록 조회 - 사용자 ID: {}", userId);
 
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<Artwork> artworks = artworkRepository.findByUser_UserIdAndVisibilityOrderByCreatedAtDesc(
                 userId, VisibilityType.PUBLIC, pageable);
         return artworks.map(ArtworkListResponse::from);
@@ -561,9 +565,10 @@ public class ArtworkService {
     /**
      * 공개 작품 갤러리 조회 (페이징, 정렬별)
      */
-    public Page<ArtworkListResponse> getPublicArtworks(Pageable pageable, String sortBy) {
+    public Page<ArtworkListResponse> getPublicArtworks(String sortBy, int page, int size) {
         log.info("공개 작품 갤러리 조회 - 정렬: {}", sortBy);
 
+        Pageable pageable = PageRequest.of(page, size);
         Page<Artwork> artworks = switch (sortBy.toLowerCase()) {
             case "popular" -> artworkRepository.findByVisibilityOrderByFavoriteCountDescCreatedAtDesc(
                     VisibilityType.PUBLIC, pageable);
@@ -579,9 +584,10 @@ public class ArtworkService {
     /**
      * 작품 검색 (제목 기반)
      */
-    public Page<ArtworkListResponse> searchPublicArtworks(String keyword, Pageable pageable) {
+    public Page<ArtworkListResponse> searchPublicArtworks(String keyword, int page, int size) {
         log.info("작품 검색 - 키워드: '{}'", keyword);
 
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<Artwork> artworks = artworkRepository.searchPublicArtworksByTitle(keyword, pageable);
         return artworks.map(ArtworkListResponse::from);
     }

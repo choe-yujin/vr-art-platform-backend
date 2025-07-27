@@ -53,10 +53,10 @@ public class ArtworkController {
             description = "VR 기기에서 GLB 파일과 최소 메타데이터로 작품을 생성합니다. 제목은 자동 생성됩니다.",
             security = @SecurityRequirement(name = "JWT")
     )
-    @PostMapping("/vr-upload")
+    @PostMapping(value = "/vr-upload", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ArtworkResponse> createVrArtwork(
             @Parameter(description = "사용자 ID", required = true) @RequestHeader("X-User-Id") Long userId,
-            @Parameter(description = "GLB 3D 모델 파일", required = true) @RequestPart("glbFile") MultipartFile glbFile,
+            @Parameter(description = "GLB 3D 모델 파일", required = true) @RequestParam("glbFile") MultipartFile glbFile,
             @Parameter(description = "태그 ID 목록 (최대 5개, 선택사항)") @RequestParam(required = false) List<Long> tagIds,
             @Parameter(description = "썸네일 미디어 ID (선택사항)") @RequestParam(required = false) Long thumbnailMediaId,
             @Parameter(description = "커스텀 제목 (선택사항)") @RequestParam(required = false) String customTitle,
@@ -228,11 +228,12 @@ public class ArtworkController {
     public ResponseEntity<Page<ArtworkListResponse>> getArtworksByUser(
             @Parameter(description = "사용자 ID", required = true) @PathVariable Long userId,
             @Parameter(description = "요청자 사용자 ID", required = false) @RequestHeader(value = "X-User-Id", required = false) Long requestUserId,
-            @Parameter(description = "페이징 정보") @PageableDefault(size = 20) Pageable pageable
+            @Parameter(description = "페이지 번호 (0부터 시작)", example = "0") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "페이지 크기", example = "20") @RequestParam(defaultValue = "20") int size
     ) {
         log.info("사용자별 작품 목록 조회 요청 - 사용자 ID: {}, 요청자 ID: {}", userId, requestUserId);
 
-        Page<ArtworkListResponse> response = artworkService.getArtworksByUser(userId, requestUserId, pageable);
+        Page<ArtworkListResponse> response = artworkService.getArtworksByUser(userId, requestUserId, page, size);
         return ResponseEntity.ok(response);
     }
 
@@ -243,11 +244,12 @@ public class ArtworkController {
     @GetMapping("/user/{userId}/public")
     public ResponseEntity<Page<ArtworkListResponse>> getPublicArtworksByUser(
             @Parameter(description = "사용자 ID", required = true) @PathVariable Long userId,
-            @Parameter(description = "페이징 정보") @PageableDefault(size = 20) Pageable pageable
+            @Parameter(description = "페이지 번호 (0부터 시작)", example = "0") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "페이지 크기", example = "20") @RequestParam(defaultValue = "20") int size
     ) {
         log.info("사용자 공개 작품 목록 조회 요청 - 사용자 ID: {}", userId);
 
-        Page<ArtworkListResponse> response = artworkService.getPublicArtworksByUser(userId, pageable);
+        Page<ArtworkListResponse> response = artworkService.getPublicArtworksByUser(userId, page, size);
         return ResponseEntity.ok(response);
     }
 
@@ -259,11 +261,12 @@ public class ArtworkController {
     public ResponseEntity<Page<ArtworkListResponse>> getPublicArtworks(
             @Parameter(description = "정렬 방식 (latest, popular, views)", example = "latest")
             @RequestParam(defaultValue = "latest") String sortBy,
-            @Parameter(description = "페이징 정보") @PageableDefault(size = 20) Pageable pageable
+            @Parameter(description = "페이지 번호 (0부터 시작)", example = "0") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "페이지 크기", example = "20") @RequestParam(defaultValue = "20") int size
     ) {
         log.info("공개 작품 갤러리 조회 요청 - 정렬: {}", sortBy);
 
-        Page<ArtworkListResponse> response = artworkService.getPublicArtworks(pageable, sortBy);
+        Page<ArtworkListResponse> response = artworkService.getPublicArtworks(sortBy, page, size);
         return ResponseEntity.ok(response);
     }
 
@@ -274,11 +277,12 @@ public class ArtworkController {
     @GetMapping("/search")
     public ResponseEntity<Page<ArtworkListResponse>> searchArtworks(
             @Parameter(description = "검색 키워드", required = true) @RequestParam String keyword,
-            @Parameter(description = "페이징 정보") @PageableDefault(size = 20) Pageable pageable
+            @Parameter(description = "페이지 번호 (0부터 시작)", example = "0") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "페이지 크기", example = "20") @RequestParam(defaultValue = "20") int size
     ) {
         log.info("작품 검색 요청 - 키워드: '{}'", keyword);
 
-        Page<ArtworkListResponse> response = artworkService.searchPublicArtworks(keyword, pageable);
+        Page<ArtworkListResponse> response = artworkService.searchPublicArtworks(keyword, page, size);
         return ResponseEntity.ok(response);
     }
 

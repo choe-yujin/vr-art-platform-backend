@@ -112,6 +112,7 @@ public class MediaService {
 
     /**
      * 독립 미디어를 기존 작품과 연결합니다.
+     * 이미지 미디어인 경우 자동으로 작품의 썸네일로 설정됩니다.
      */
     @Transactional
     public void linkMediaToArtwork(Long userId, Long mediaId, Long artworkId) {
@@ -125,9 +126,16 @@ public class MediaService {
         validateMediaOwnership(media, user);
         validateArtworkOwnership(artwork, user);
 
-        // 연결
+        // 미디어를 작품에 연결
         media.linkToArtwork(artwork);
         mediaRepository.save(media);
+
+        // 이미지 미디어인 경우 작품의 썸네일로 자동 설정
+        if (media.getMediaType() == MediaType.IMAGE) {
+            artwork.setThumbnail(media);
+            artworkRepository.save(artwork);
+            log.info("이미지 미디어를 작품의 썸네일로 설정 - 미디어: {}, 작품: {}", mediaId, artworkId);
+        }
 
         log.info("미디어-작품 연결 완료 - 미디어: {}, 작품: {}", mediaId, artworkId);
     }

@@ -165,9 +165,14 @@ public class Artwork extends BaseEntity {
 
     /**
      * 주어진 사용자가 이 작품의 소유자인지 확인합니다.
+     * 프록시 객체 문제를 방지하기 위해 ID 기반으로 비교합니다.
      */
     public boolean isOwnedBy(User user) {
-        return this.user != null && this.user.equals(user);
+        if (user == null || this.user == null) {
+            return false;
+        }
+        // ID 기반 비교로 변경 (프록시 객체 문제 해결)
+        return Objects.equals(this.user.getUserId(), user.getUserId());
     }
 
     // --- 상태 조회 비즈니스 로직 ---
