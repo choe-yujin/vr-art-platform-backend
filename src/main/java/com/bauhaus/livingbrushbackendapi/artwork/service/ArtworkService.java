@@ -564,9 +564,10 @@ public class ArtworkService {
 
     /**
      * 공개 작품 갤러리 조회 (페이징, 정렬별)
+     * 로그인한 사용자인 경우 좋아요/즐겨찾기 상태가 포함됩니다.
      */
-    public Page<ArtworkListResponse> getPublicArtworks(String sortBy, int page, int size) {
-        log.info("공개 작품 갤러리 조회 - 정렬: {}", sortBy);
+    public Page<ArtworkListResponse> getPublicArtworks(String sortBy, int page, int size, Long requestUserId) {
+        log.info("공개 작품 갤러리 조회 - 정렬: {}, 요청자: {}", sortBy, requestUserId != null ? requestUserId : "게스트");
 
         Pageable pageable = PageRequest.of(page, size);
         Page<Artwork> artworks = switch (sortBy.toLowerCase()) {
@@ -578,7 +579,30 @@ public class ArtworkService {
                     VisibilityType.PUBLIC, pageable);
         };
 
-        return artworks.map(ArtworkListResponse::from);
+        // 게스트인 경우
+        if (requestUserId == null) {
+            return artworks.map(ArtworkListResponse::from);
+        }
+
+        // 로그인 사용자인 경우 - 좋아요/즐겨찾기 상태 포함
+        // TODO: 실제 좋아요/즐겨찾기 서비스가 구현되면 연동
+        // 현재는 빈 Set으로 처리 (모든 상태가 false)
+        java.util.Set<Long> likedArtworkIds = java.util.Set.of(); // 임시: 빈 Set
+        java.util.Set<Long> bookmarkedArtworkIds = java.util.Set.of(); // 임시: 빈 Set
+
+        return artworks.map(artwork -> ArtworkListResponse.from(
+            artwork, 
+            requestUserId, 
+            likedArtworkIds.contains(artwork.getArtworkId()),
+            bookmarkedArtworkIds.contains(artwork.getArtworkId())
+        ));
+    }
+
+    /**
+     * 공개 작품 갤러리 조회 (기존 메서드 - 하위 호환성)
+     */
+    public Page<ArtworkListResponse> getPublicArtworks(String sortBy, int page, int size) {
+        return getPublicArtworks(sortBy, page, size, null); // 게스트로 처리
     }
 
     /**

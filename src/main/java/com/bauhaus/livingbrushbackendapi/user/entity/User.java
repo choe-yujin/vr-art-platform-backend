@@ -136,6 +136,21 @@ public class User extends BaseEntity {
         this.assignProfile(new UserProfile(this, oauthProfileImageUrl));
     }
 
+    // ========== 비즈니스 로직 및 헬퍼 메서드 ==========
+
+    /**
+     * 사용자 프로필 이미지 URL 반환
+     * UserProfile이 없으면 환경변수 기반 기본 이미지 URL 반환
+     */
+    public String getProfileImageUrl() {
+        if (this.userProfile != null && this.userProfile.getProfileImageUrl() != null) {
+            return this.userProfile.getProfileImageUrl();
+        }
+        // 환경변수에서 기본 프로필 이미지 URL 가져오기
+        return System.getProperty("app.profile.default-image-url", 
+               System.getenv("DEFAULT_PROFILE_IMAGE_URL"));
+    }
+
     public static User createNewMetaUser(String providerId, String email, String name, String oauthProfileImageUrl) {
         return User.builder()
                 .nickname(name)

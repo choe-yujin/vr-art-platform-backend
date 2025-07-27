@@ -255,18 +255,21 @@ public class ArtworkController {
 
     @Operation(
             summary = "공개 작품 갤러리 조회",
-            description = "공개 작품들을 정렬 옵션에 따라 페이징으로 조회합니다. (latest, popular, views)"
+            description = "공개 작품들을 정렬 옵션에 따라 페이징으로 조회합니다. (latest, popular, views)\n" +
+                         "로그인한 사용자인 경우 좋아요/즐겨찾기 상태가 포함됩니다."
     )
     @GetMapping("/public")
     public ResponseEntity<Page<ArtworkListResponse>> getPublicArtworks(
             @Parameter(description = "정렬 방식 (latest, popular, views)", example = "latest")
             @RequestParam(defaultValue = "latest") String sortBy,
             @Parameter(description = "페이지 번호 (0부터 시작)", example = "0") @RequestParam(defaultValue = "0") int page,
-            @Parameter(description = "페이지 크기", example = "20") @RequestParam(defaultValue = "20") int size
+            @Parameter(description = "페이지 크기", example = "20") @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "요청자 사용자 ID (로그인한 경우만)", required = false) 
+            @RequestHeader(value = "X-User-Id", required = false) Long requestUserId
     ) {
-        log.info("공개 작품 갤러리 조회 요청 - 정렬: {}", sortBy);
+        log.info("공개 작품 갤러리 조회 요청 - 정렬: {}, 요청자: {}", sortBy, requestUserId != null ? requestUserId : "게스트");
 
-        Page<ArtworkListResponse> response = artworkService.getPublicArtworks(sortBy, page, size);
+        Page<ArtworkListResponse> response = artworkService.getPublicArtworks(sortBy, page, size, requestUserId);
         return ResponseEntity.ok(response);
     }
 

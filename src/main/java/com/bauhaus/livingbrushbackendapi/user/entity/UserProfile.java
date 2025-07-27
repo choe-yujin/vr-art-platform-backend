@@ -168,9 +168,13 @@ public class UserProfile extends BaseEntity {
 
     /**
      * 기본 프로필 이미지 URL 반환
+     * ProfileImageService의 getDefaultProfileImageUrl()과 동일한 환경변수 사용
      */
     private String getDefaultProfileImageUrl() {
-        return "https://livingbrush-storage.s3.ap-northeast-2.amazonaws.com/profile/default-avatar.png";
+        // ProfileImageService와 동일한 환경변수 값 사용
+        // app.profile.default-image-url: ${DEFAULT_PROFILE_IMAGE_URL}
+        return System.getProperty("app.profile.default-image-url", 
+               System.getenv("DEFAULT_PROFILE_IMAGE_URL"));
     }
 
     // ========== 객체 동일성 비교 ==========
