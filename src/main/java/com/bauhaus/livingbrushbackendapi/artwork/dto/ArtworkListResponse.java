@@ -35,6 +35,7 @@ public class ArtworkListResponse {
     private BigDecimal priceCash;
     private int favoriteCount;
     private int viewCount;
+    private int commentCount;
     private LocalDateTime createdAt;
     
     // 추가 정보 (간소화)
@@ -48,7 +49,7 @@ public class ArtworkListResponse {
 
     @Builder
     private ArtworkListResponse(Long artworkId, Long userId, String userNickname, String profileUrl, String title, String thumbnailUrl,
-                               VisibilityType visibility, BigDecimal priceCash, int favoriteCount, int viewCount,
+                               VisibilityType visibility, BigDecimal priceCash, int favoriteCount, int viewCount, int commentCount,
                                LocalDateTime createdAt, boolean isPublic, boolean isPaid, boolean hasThumbnail,
                                Boolean isLiked, Boolean isBookmarked) {
         this.artworkId = artworkId;
@@ -61,6 +62,7 @@ public class ArtworkListResponse {
         this.priceCash = priceCash;
         this.favoriteCount = favoriteCount;
         this.viewCount = viewCount;
+        this.commentCount = commentCount;
         this.createdAt = createdAt;
         this.isPublic = isPublic;
         this.isPaid = isPaid;
@@ -73,7 +75,7 @@ public class ArtworkListResponse {
      * Artwork 엔티티로부터 DTO 생성 (게스트 사용자용)
      * 로그인 관련 정보는 null로 설정됩니다.
      */
-    public static ArtworkListResponse from(Artwork artwork) {
+    public static ArtworkListResponse from(Artwork artwork, int commentCount) {
         return ArtworkListResponse.builder()
                 .artworkId(artwork.getArtworkId())
                 .userId(artwork.getUser().getUserId())
@@ -85,6 +87,7 @@ public class ArtworkListResponse {
                 .priceCash(artwork.getPriceCash())
                 .favoriteCount(artwork.getFavoriteCount())
                 .viewCount(artwork.getViewCount())
+                .commentCount(commentCount)
                 .createdAt(artwork.getCreatedAt())
                 .isPublic(artwork.isPublic())
                 .isPaid(artwork.isPaid())
@@ -95,10 +98,17 @@ public class ArtworkListResponse {
     }
     
     /**
+     * 하위 호환성을 위한 메서드 (commentCount = 0)
+     */
+    public static ArtworkListResponse from(Artwork artwork) {
+        return from(artwork, 0); // 기본값 0으로 설정
+    }
+    
+    /**
      * Artwork 엔티티로부터 DTO 생성 (로그인 사용자용)
      * 현재 사용자의 좋아요/즐겨찾기 상태를 포함합니다.
      */
-    public static ArtworkListResponse from(Artwork artwork, Long currentUserId, boolean isLiked, boolean isBookmarked) {
+    public static ArtworkListResponse from(Artwork artwork, Long currentUserId, boolean isLiked, boolean isBookmarked, int commentCount) {
         return ArtworkListResponse.builder()
                 .artworkId(artwork.getArtworkId())
                 .userId(artwork.getUser().getUserId())
@@ -110,6 +120,7 @@ public class ArtworkListResponse {
                 .priceCash(artwork.getPriceCash())
                 .favoriteCount(artwork.getFavoriteCount())
                 .viewCount(artwork.getViewCount())
+                .commentCount(commentCount)
                 .createdAt(artwork.getCreatedAt())
                 .isPublic(artwork.isPublic())
                 .isPaid(artwork.isPaid())
@@ -117,6 +128,13 @@ public class ArtworkListResponse {
                 .isLiked(isLiked)           // 실제 좋아요 상태
                 .isBookmarked(isBookmarked) // 실제 즐겨찾기 상태
                 .build();
+    }
+    
+    /**
+     * 하위 호환성을 위한 메서드 (commentCount = 0)
+     */
+    public static ArtworkListResponse from(Artwork artwork, Long currentUserId, boolean isLiked, boolean isBookmarked) {
+        return from(artwork, currentUserId, isLiked, isBookmarked, 0); // 기본값 0으로 설정
     }
 
     /**
