@@ -17,7 +17,9 @@ import com.bauhaus.livingbrushbackendapi.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -167,7 +169,8 @@ public class MediaService {
     /**
      * 사용자의 모든 미디어 조회 (페이징)
      */
-    public Page<MediaListResponse> getUserMedia(Long userId, Pageable pageable) {
+    public Page<MediaListResponse> getUserMedia(Long userId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         return mediaRepository.findByUser_UserIdOrderByCreatedAtDesc(userId, pageable)
                 .map(MediaListResponse::from);
     }

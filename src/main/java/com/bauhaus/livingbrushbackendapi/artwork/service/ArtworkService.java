@@ -107,7 +107,7 @@ public class ArtworkService {
             log.info("작품 저장 완료 - ID: {}", artworkId);
 
             // 4. 실제 제목 생성 및 업데이트
-            String finalTitle = vrRequest.generateDefaultTitle(artworkId);
+            String finalTitle = vrRequest.generateDefaultTitle(userId, artworkId);
             savedArtwork.updateDetails(finalTitle, null);
             log.info("자동 생성된 제목: '{}'", finalTitle);
 

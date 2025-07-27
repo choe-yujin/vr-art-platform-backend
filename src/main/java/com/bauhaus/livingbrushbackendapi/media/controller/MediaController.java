@@ -136,12 +136,13 @@ public class MediaController {
     public ResponseEntity<Page<MediaListResponse>> getUserMedia(
             @Parameter(description = "사용자 ID", required = true)
             @PathVariable Long userId,
-            
-            @PageableDefault(size = 20) Pageable pageable) {
+            @Parameter(description = "페이지 번호 (0부터 시작)", example = "0") @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "페이지 크기", example = "20") @RequestParam(defaultValue = "20") int size
+    ) {
 
         log.info("사용자 미디어 목록 조회 - 사용자 ID: {}", userId);
 
-        Page<MediaListResponse> mediaPage = mediaService.getUserMedia(userId, pageable);
+        Page<MediaListResponse> mediaPage = mediaService.getUserMedia(userId, page, size);
         return ResponseEntity.ok(mediaPage);
     }
 

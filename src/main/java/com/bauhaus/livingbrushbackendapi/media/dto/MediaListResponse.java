@@ -51,12 +51,18 @@ public class MediaListResponse {
      * Media 엔티티로부터 DTO 생성
      */
     public static MediaListResponse from(Media media) {
+        // IMAGE 타입인 경우 thumbnailUrl이 null이면 fileUrl을 사용
+        String thumbnailUrl = media.getThumbnailUrl();
+        if (thumbnailUrl == null && media.getMediaType() == MediaType.IMAGE) {
+            thumbnailUrl = media.getFileUrl();
+        }
+        
         return MediaListResponse.builder()
                 .mediaId(media.getMediaId())
                 .artworkId(media.getArtwork() != null ? media.getArtwork().getArtworkId() : null)
                 .mediaType(media.getMediaType())
                 .fileUrl(media.getFileUrl())
-                .thumbnailUrl(media.getThumbnailUrl())
+                .thumbnailUrl(thumbnailUrl)
                 .visibility(media.getVisibility())
                 .createdAt(media.getCreatedAt())
                 .isLinkedToArtwork(media.getArtwork() != null)

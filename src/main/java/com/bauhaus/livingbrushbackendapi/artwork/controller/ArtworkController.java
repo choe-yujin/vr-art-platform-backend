@@ -82,7 +82,7 @@ public class ArtworkController {
             description = "AR 앱이나 웹에서 상세 메타데이터와 함께 작품을 생성합니다.",
             security = @SecurityRequirement(name = "JWT")
     )
-    @PostMapping("/upload")
+    @PostMapping(value = "/upload", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ArtworkResponse> createArtworkWithGlb(
             @Parameter(description = "사용자 ID", required = true) @RequestHeader("X-User-Id") Long userId,
             @Parameter(description = "작품 메타데이터", required = true) @Valid @RequestPart("metadata") ArtworkCreateRequest request,

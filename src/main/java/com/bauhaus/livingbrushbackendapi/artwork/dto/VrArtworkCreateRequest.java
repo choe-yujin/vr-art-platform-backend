@@ -139,14 +139,15 @@ public class VrArtworkCreateRequest {
     /**
      * 기본값으로 작품 제목 생성
      * 
+     * @param userId 사용자 ID
      * @param artworkId 생성된 작품 ID
      * @return 자동 생성된 제목
      */
-    public String generateDefaultTitle(Long artworkId) {
+    public String generateDefaultTitle(Long userId, Long artworkId) {
         if (hasCustomTitle()) {
             return customTitle.trim();
         }
-        return String.format("untitled_id_%d", artworkId);
+        return String.format("untitled_%d_%d", userId, artworkId);
     }
 
     /**
@@ -166,13 +167,14 @@ public class VrArtworkCreateRequest {
      * 
      * VR 특화 요청을 기존 시스템과 호환되도록 변환합니다.
      * 
+     * @param userId 사용자 ID
      * @param artworkId 생성된 작품 ID
      * @param glbUrl 업로드된 GLB 파일 URL
      * @return 변환된 ArtworkCreateRequest
      */
-    public ArtworkCreateRequest toArtworkCreateRequest(Long artworkId, String glbUrl) {
+    public ArtworkCreateRequest toArtworkCreateRequest(Long userId, Long artworkId, String glbUrl) {
         return ArtworkCreateRequest.builder()
-                .title(generateDefaultTitle(artworkId))
+                .title(generateDefaultTitle(userId, artworkId))
                 .description(generateDefaultDescription())
                 .glbUrl(glbUrl)
                 .priceCash(null) // VR에서는 가격 설정 없음
