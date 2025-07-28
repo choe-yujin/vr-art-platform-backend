@@ -17,6 +17,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -207,39 +208,42 @@ public class ArtworkController {
 
     @Operation(
             summary = "작품 상세 조회",
-            description = "특정 작품의 상세 정보를 조회합니다. 공개 작품이거나 소유자만 접근 가능합니다."
+            description = "특정 작품의 상세 정보를 조회합니다. 공개 작품이거나 소유자만 접근 가능합니다. 비회원도 공개 작품은 조회 가능합니다."
     )
     @GetMapping("/{artworkId}")
     public ResponseEntity<ArtworkResponse> getArtwork(
             @Parameter(description = "작품 ID", required = true) @PathVariable Long artworkId,
-            @Parameter(description = "요청자 사용자 ID", required = false) @RequestHeader(value = "X-User-Id", required = false) Long requestUserId
+            @Parameter(description = "요청자 사용자 ID (비회원인 경우 null)", hidden = true)
+            @org.springframework.security.core.annotation.AuthenticationPrincipal(errorOnInvalidType = false) Long requestUserId
     ) {
-        log.info("작품 상세 조회 요청 - 작품 ID: {}, 요청자 ID: {}", artworkId, requestUserId);
+        log.info("작품 상세 조회 요청 - 작품 ID: {}, 요청자 ID: {}", artworkId, 
+                requestUserId != null ? requestUserId : "비회원");
 
         ArtworkResponse response = artworkService.getArtworkById(artworkId, requestUserId);
         return ResponseEntity.ok(response);
     }
 
     @Operation(
-            summary = "사용자별 작품 목록 조회",
-            description = "특정 사용자의 작품 목록을 페이징으로 조회합니다. 본인인 경우 모든 작품, 다른 사용자인 경우 공개 작품만 조회됩니다."
+            summary = "내 작품 목록 조회 (본인 전용)",
+            description = "본인의 모든 작품(공개 + 비공개)을 페이징으로 조회합니다. 마이페이지에서 사용됩니다.",
+            security = @SecurityRequirement(name = "JWT")
     )
     @GetMapping("/user/{userId}")
-    public ResponseEntity<Page<ArtworkListResponse>> getArtworksByUser(
+    public ResponseEntity<Page<ArtworkListResponse>> getMyArtworks(
             @Parameter(description = "사용자 ID", required = true) @PathVariable Long userId,
-            @Parameter(description = "요청자 사용자 ID", required = false) @RequestHeader(value = "X-User-Id", required = false) Long requestUserId,
+            @Parameter(description = "요청자 사용자 ID", required = true) @RequestHeader("X-User-Id") Long requestUserId,
             @Parameter(description = "페이지 번호 (0부터 시작)", example = "0") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "페이지 크기", example = "20") @RequestParam(defaultValue = "20") int size
     ) {
-        log.info("사용자별 작품 목록 조회 요청 - 사용자 ID: {}, 요청자 ID: {}", userId, requestUserId);
+        log.info("내 작품 목록 조회 요청 - 사용자 ID: {}", userId);
 
-        Page<ArtworkListResponse> response = artworkService.getArtworksByUser(userId, requestUserId, page, size);
+        Page<ArtworkListResponse> response = artworkService.getMyArtworks(userId, requestUserId, page, size);
         return ResponseEntity.ok(response);
     }
 
     @Operation(
-            summary = "사용자의 공개 작품만 조회",
-            description = "특정 사용자의 공개 작품만 페이징으로 조회합니다. 프로필 페이지에서 사용됩니다."
+            summary = "다른 사용자의 공개 작품 조회",
+            description = "특정 사용자의 공개 작품만 페이징으로 조회합니다. 다른 사람의 프로필 페이지에서 사용됩니다."
     )
     @GetMapping("/user/{userId}/public")
     public ResponseEntity<Page<ArtworkListResponse>> getPublicArtworksByUser(
@@ -256,7 +260,7 @@ public class ArtworkController {
     @Operation(
             summary = "공개 작품 갤러리 조회",
             description = "공개 작품들을 정렬 옵션에 따라 페이징으로 조회합니다. (latest, popular, views)\n" +
-                         "로그인한 사용자인 경우 좋아요/즐겨찾기 상태가 포함됩니다."
+                         "로그인한 사용자인 경우 좋아요/즐겨찾기 상태가 포함되며, 비회원도 접근 가능합니다."
     )
     @GetMapping("/public")
     public ResponseEntity<Page<ArtworkListResponse>> getPublicArtworks(
@@ -264,10 +268,11 @@ public class ArtworkController {
             @RequestParam(defaultValue = "latest") String sortBy,
             @Parameter(description = "페이지 번호 (0부터 시작)", example = "0") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "페이지 크기", example = "20") @RequestParam(defaultValue = "20") int size,
-            @Parameter(description = "요청자 사용자 ID (로그인한 경우만)", required = false) 
-            @RequestHeader(value = "X-User-Id", required = false) Long requestUserId
+            @Parameter(description = "요청자 사용자 ID (비회원인 경우 null)", hidden = true)
+            @org.springframework.security.core.annotation.AuthenticationPrincipal(errorOnInvalidType = false) Long requestUserId
     ) {
-        log.info("공개 작품 갤러리 조회 요청 - 정렬: {}, 요청자: {}", sortBy, requestUserId != null ? requestUserId : "게스트");
+        log.info("공개 작품 갤러리 조회 요청 - 정렬: {}, 요청자: {}", sortBy, 
+                requestUserId != null ? requestUserId : "비회원");
 
         Page<ArtworkListResponse> response = artworkService.getPublicArtworks(sortBy, page, size, requestUserId);
         return ResponseEntity.ok(response);

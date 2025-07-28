@@ -138,19 +138,22 @@ public class UserProfileController {
      * 
      * 스토리보드에서 "소연의 프로필로 들어가"는 기능을 위한 API입니다.
      * 개인정보 보호를 위해 공개 설정된 정보만 반환합니다.
+     * 비회원도 접근 가능하며, 이 경우 isFollowing이 null로 반환됩니다.
      */
-    @Operation(summary = "다른 사용자 공개 프로필 조회", description = "다른 사용자의 공개 프로필 정보를 조회합니다. 공개 설정된 정보만 포함됩니다.")
+    @Operation(summary = "다른 사용자 공개 프로필 조회", 
+               description = "다른 사용자의 공개 프로필 정보를 조회합니다. 비회원도 접근 가능하며, 로그인 시에만 팔로우 상태가 포함됩니다.")
     @GetMapping("/users/{userId}")
     public ResponseEntity<PublicUserProfileResponse> getPublicUserProfile(
             @Parameter(description = "조회할 사용자 ID", required = true) @PathVariable Long userId,
-            @Parameter(description = "현재 로그인한 사용자 ID (선택사항)", hidden = true) 
-            @RequestHeader(value = "X-User-Id", required = false) Long currentUserId) {
+            @Parameter(description = "현재 로그인한 사용자 ID (비회원인 경우 null)", hidden = true) 
+            @AuthenticationPrincipal(errorOnInvalidType = false) Long currentUserId) {
         
-        log.info("공개 프로필 조회 요청 - 대상 사용자 ID: {}, 요청자 ID: {}", userId, currentUserId);
+        log.info("공개 프로필 조회 요청 - 대상 사용자 ID: {}, 요청자 ID: {}", userId, 
+                currentUserId != null ? currentUserId : "비회원");
         
         PublicUserProfileResponse profile = userProfileService.getPublicUserProfile(userId, currentUserId);
         
-        log.info("공개 프로필 조회 완료 - 대상 사용자 ID: {}", userId);
+        log.info("공개 프로필 조회 완료 - 대상 사용자 ID: {}, isFollowing: {}", userId, profile.getIsFollowing());
         return ResponseEntity.ok(profile);
     }
 
@@ -190,59 +193,5 @@ public class UserProfileController {
         
         log.info("내 통계 조회 완료 - 사용자 ID: {}", userId);
         return ResponseEntity.ok(stats);
-    }
-
-    // ====================================================================
-    // ✨ 사용자 작품 조회 API (UserProfileScreen 지원)
-    // ====================================================================
-
-    /**
-     * 다른 사용자의 공개 작품 목록 조회
-     * 
-     * UserProfileScreen에서 작가의 공개 작품을 보여주기 위한 API입니다.
-     * 페이징을 지원하며, 공개 설정된 작품만 반환합니다.
-     */
-    @Operation(summary = "사용자 공개 작품 목록 조회", 
-               description = "특정 사용자의 공개 작품 목록을 페이징으로 조회합니다.")
-    @GetMapping("/users/{userId}/artworks")
-    public ResponseEntity<org.springframework.data.domain.Page<com.bauhaus.livingbrushbackendapi.artwork.dto.ArtworkListResponse>> getUserPublicArtworks(
-            @Parameter(description = "조회할 사용자 ID", required = true) @PathVariable Long userId,
-            @Parameter(description = "페이지 번호 (0부터 시작)", example = "0") 
-            @RequestParam(value = "page", defaultValue = "0") int page,
-            @Parameter(description = "페이지 크기", example = "10") 
-            @RequestParam(value = "size", defaultValue = "10") int size) {
-        
-        log.info("사용자 공개 작품 목록 조회 요청 - 사용자 ID: {}, 페이지: {}, 크기: {}", userId, page, size);
-        
-        org.springframework.data.domain.Page<com.bauhaus.livingbrushbackendapi.artwork.dto.ArtworkListResponse> artworks = 
-                userProfileService.getUserPublicArtworks(userId, page, size);
-        
-        log.info("사용자 공개 작품 목록 조회 완료 - 사용자 ID: {}, 총 {}개 작품", userId, artworks.getTotalElements());
-        return ResponseEntity.ok(artworks);
-    }
-
-    /**
-     * 내 모든 작품 목록 조회 (공개/비공개 모두)
-     * 
-     * 마이페이지에서 자신의 모든 작품을 관리하기 위한 API입니다.
-     */
-    @Operation(summary = "내 모든 작품 목록 조회", 
-               description = "현재 로그인한 사용자의 모든 작품(공개/비공개)을 페이징으로 조회합니다.",
-               security = @SecurityRequirement(name = "JWT"))
-    @GetMapping("/me/artworks")
-    public ResponseEntity<org.springframework.data.domain.Page<com.bauhaus.livingbrushbackendapi.artwork.dto.ArtworkListResponse>> getMyAllArtworks(
-            @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
-            @Parameter(description = "페이지 번호 (0부터 시작)", example = "0") 
-            @RequestParam(value = "page", defaultValue = "0") int page,
-            @Parameter(description = "페이지 크기", example = "10") 
-            @RequestParam(value = "size", defaultValue = "10") int size) {
-        
-        log.info("내 모든 작품 목록 조회 요청 - 사용자 ID: {}, 페이지: {}, 크기: {}", userId, page, size);
-        
-        org.springframework.data.domain.Page<com.bauhaus.livingbrushbackendapi.artwork.dto.ArtworkListResponse> artworks = 
-                userProfileService.getMyAllArtworks(userId, page, size);
-        
-        log.info("내 모든 작품 목록 조회 완료 - 사용자 ID: {}, 총 {}개 작품", userId, artworks.getTotalElements());
-        return ResponseEntity.ok(artworks);
     }
 }

@@ -37,7 +37,7 @@ public class SecurityConfig {
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
 
-    // [수정] 인증 없이 접근 가능한 경로 목록에 개발용 API 경로 추가
+    // [수정] 인증 없이 접근 가능한 경로 목록에 공개 API 경로 추가
     private static final String[] PUBLIC_URLS = {
             // --- Basic and Error ---
             "/", "/error",
@@ -53,7 +53,15 @@ public class SecurityConfig {
             "/api/ai/**", // 개발용 AI API 테스트 (임시)
 
             // --- Static Resources ---
-            "/qr-images/**" // QR 코드 이미지 경로
+            "/qr-images/**", // QR 코드 이미지 경로
+
+            // --- 🎯 Public APIs (비회원도 접근 가능) ---
+            "/api/artworks/*/view", // 조회수 증가 (POST)
+            "/api/artworks/public", // 공개 작품 갤러리 (GET)
+            "/api/artworks/search", // 작품 검색 (GET)
+            "/api/artworks/user/*/public", // 사용자 공개 작품 (GET) 👈 복원
+            "/api/profile/users/*", // 공개 프로필 조회 (GET)
+            "/api/profile/users/*/stats" // 사용자 통계 (GET)
     };
 
     /**
@@ -78,12 +86,9 @@ public class SecurityConfig {
                 // 5. 요청 경로별 인가 규칙 설정
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_URLS).permitAll() // 공개 경로는 모두 허용
-                        // WebAR용 작품 조회 API (GET 요청만 공개)
+                        // 🎯 비회원도 접근 가능한 작품 조회 API
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/artworks/*").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/artworks/*/view").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/artworks/public").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/artworks/search").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/artworks/user/*/public").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/artworks/user/*").permitAll()
                         .anyRequest().authenticated() // 그 외 모든 요청은 인증 필요
                 )
 

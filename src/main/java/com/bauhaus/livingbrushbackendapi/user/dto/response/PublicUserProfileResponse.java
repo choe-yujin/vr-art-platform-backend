@@ -69,8 +69,9 @@ public class PublicUserProfileResponse {
 
     /**
      * 현재 사용자가 이 사용자를 팔로우하고 있는지 여부
+     * null: 비회원(로그인하지 않음), true: 팔로잉 중, false: 팔로우하지 않음
      */
-    private boolean isFollowing;
+    private Boolean isFollowing;
 
     /**
      * 공개 작품 수
@@ -81,7 +82,7 @@ public class PublicUserProfileResponse {
     private PublicUserProfileResponse(Long userId, String nickname, String profileImageUrl,
                                     String bio, int followerCount, int followingCount, String role,
                                     LocalDateTime joinDate, LocalDateTime artistQualifiedAt,
-                                    boolean isFollowing, int publicArtworkCount) {
+                                    Boolean isFollowing, int publicArtworkCount) {
         this.userId = userId;
         this.nickname = nickname;
         this.profileImageUrl = profileImageUrl;
@@ -100,12 +101,12 @@ public class PublicUserProfileResponse {
      * 
      * @param user User 엔티티
      * @param userProfile UserProfile 엔티티 (null 가능)
-     * @param isFollowing 현재 사용자가 이 사용자를 팔로우하고 있는지 여부
+     * @param isFollowing 현재 사용자가 이 사용자를 팔로우하고 있는지 여부 (null: 비회원, true: 팔로잉, false: 미팔로우)
      * @param publicArtworkCount 공개 작품 수
      * @return PublicUserProfileResponse 객체
      */
     public static PublicUserProfileResponse from(User user, UserProfile userProfile, 
-                                                boolean isFollowing, int publicArtworkCount) {
+                                                Boolean isFollowing, int publicArtworkCount) {
         return PublicUserProfileResponse.builder()
                 .userId(user.getUserId())
                 .nickname(user.getNickname())
@@ -125,11 +126,11 @@ public class PublicUserProfileResponse {
      * User 엔티티만으로 공개 프로필 응답 DTO를 생성합니다. (UserProfile이 없는 경우)
      * 
      * @param user User 엔티티
-     * @param isFollowing 현재 사용자가 이 사용자를 팔로우하고 있는지 여부
+     * @param isFollowing 현재 사용자가 이 사용자를 팔로우하고 있는지 여부 (null: 비회원, true: 팔로잉, false: 미팔로우)
      * @param publicArtworkCount 공개 작품 수
      * @return PublicUserProfileResponse 객체 (기본값 포함)
      */
-    public static PublicUserProfileResponse fromUserOnly(User user, boolean isFollowing, int publicArtworkCount) {
+    public static PublicUserProfileResponse fromUserOnly(User user, Boolean isFollowing, int publicArtworkCount) {
         return PublicUserProfileResponse.builder()
                 .userId(user.getUserId())
                 .nickname(user.getNickname())

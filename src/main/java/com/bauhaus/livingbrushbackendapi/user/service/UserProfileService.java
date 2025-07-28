@@ -39,8 +39,6 @@ public class UserProfileService {
     private final FollowRepository followRepository;
     private final ArtworkRepository artworkRepository;
     private final ProfileImageService profileImageService;
-    // 🎯 ArtworkService 추가 (작품 조회용)
-    private final com.bauhaus.livingbrushbackendapi.artwork.service.ArtworkService artworkService;
 
     // ========== 마이페이지 API 메서드들 ==========
 
@@ -349,6 +347,10 @@ public class UserProfileService {
     /**
      * 다른 사용자의 공개 프로필 조회
      * 개인정보 보호를 위해 공개 설정된 정보만 반환합니다.
+     * 
+     * @param targetUserId 조회할 대상 사용자 ID
+     * @param currentUserId 현재 요청한 사용자 ID (null: 비회원)
+     * @return 공개 프로필 정보 (isFollowing: null=비회원, true=팔로잉, false=미팔로우)
      */
     public com.bauhaus.livingbrushbackendapi.user.dto.response.PublicUserProfileResponse getPublicUserProfile(
             Long targetUserId, Long currentUserId) {
@@ -358,10 +360,10 @@ public class UserProfileService {
 
         Optional<UserProfile> profileOpt = userProfileRepository.findByUserIdWithUser(targetUserId);
         
-        // 팔로우 상태 확인 (currentUserId가 null이면 비로그인 상태)
-        boolean isFollowing = false;
+        // 팔로우 상태 확인 (currentUserId가 null이면 비로그인 상태 → null 반환)
+        Boolean isFollowing = null; // 비회원 기본값
         if (currentUserId != null) {
-            isFollowing = isUserFollowing(currentUserId, targetUserId);
+            isFollowing = isUserFollowing(currentUserId, targetUserId); // true 또는 false
         }
 
         // 공개 작품 수 조회
@@ -481,43 +483,5 @@ public class UserProfileService {
      */
     public boolean existsProfile(Long userId) {
         return userProfileRepository.existsByUserId(userId);
-    }
-
-    // ====================================================================
-    // ✨ 사용자 작품 조회 API (UserProfileScreen 지원)
-    // ====================================================================
-
-    /**
-     * 사용자의 공개 작품 목록 조회 (페이징)
-     * UserProfileScreen에서 작가의 공개 작품을 보여주기 위한 메서드입니다.
-     */
-    public org.springframework.data.domain.Page<com.bauhaus.livingbrushbackendapi.artwork.dto.ArtworkListResponse> getUserPublicArtworks(
-            Long userId, int page, int size) {
-        
-        log.info("사용자 공개 작품 목록 조회 - 사용자 ID: {}, 페이지: {}, 크기: {}", userId, page, size);
-        
-        // 사용자 존재 확인
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-        
-        // ArtworkService의 공개 작품 조회 메서드 호출
-        return artworkService.getPublicArtworksByUser(userId, page, size);
-    }
-
-    /**
-     * 내 모든 작품 목록 조회 (공개/비공개 모두)
-     * 마이페이지에서 자신의 모든 작품을 관리하기 위한 메서드입니다.
-     */
-    public org.springframework.data.domain.Page<com.bauhaus.livingbrushbackendapi.artwork.dto.ArtworkListResponse> getMyAllArtworks(
-            Long userId, int page, int size) {
-        
-        log.info("내 모든 작품 목록 조회 - 사용자 ID: {}, 페이지: {}, 크기: {}", userId, page, size);
-        
-        // 사용자 존재 확인
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-        
-        // ArtworkService의 사용자별 작품 조회 메서드 호출 (본인이므로 모든 작품 조회)
-        return artworkService.getArtworksByUser(userId, userId, page, size);
     }
 }

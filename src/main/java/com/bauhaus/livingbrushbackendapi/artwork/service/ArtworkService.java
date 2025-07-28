@@ -522,29 +522,27 @@ public class ArtworkService {
     }
 
     /**
-     * 사용자별 작품 목록 조회 (페이징) - 권한에 따른 필터링
-     * 본인인 경우 모든 작품, 다른 사용자인 경우 공개 작품만 조회
-     * 비회원(requestUserId = null)인 경우 공개 작품만 조회
+     * 내 작품 목록 조회 (본인 전용)
+     * 본인의 모든 작품(공개 + 비공개)을 조회합니다.
      */
-    public Page<ArtworkListResponse> getArtworksByUser(Long userId, Long requestUserId, int page, int size) {
-        log.info("사용자 작품 목록 조회 - 사용자 ID: {}, 요청자 ID: {}", userId, requestUserId);
+    public Page<ArtworkListResponse> getMyArtworks(Long userId, Long requestUserId, int page, int size) {
+        log.info("내 작품 목록 조회 - 사용자 ID: {}", userId);
 
-        // 본인인 경우에만 모든 작품 조회 (비회원은 제외)
-        if (requestUserId != null && requestUserId.equals(userId)) {
-            Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-            Page<Artwork> artworks = artworkRepository.findByUser_UserIdOrderByCreatedAtDesc(userId, pageable);
-            return artworks.map(ArtworkListResponse::from);
+        // 본인 확인
+        if (!requestUserId.equals(userId)) {
+            throw new CustomException(ErrorCode.FORBIDDEN_ACCESS_ARTWORK);
         }
 
-        // 다른 사용자이거나 비회원인 경우 공개 작품만 조회
-        return getPublicArtworksByUser(userId, page, size);
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        Page<Artwork> artworks = artworkRepository.findByUser_UserIdOrderByCreatedAtDesc(userId, pageable);
+        return artworks.map(ArtworkListResponse::from);
     }
 
     /**
-     * 사용자의 공개 작품만 조회 (페이징)
+     * 다른 사용자의 공개 작품만 조회 (페이징)
      */
     public Page<ArtworkListResponse> getPublicArtworksByUser(Long userId, int page, int size) {
-        log.info("사용자 공개 작품 목록 조회 - 사용자 ID: {}", userId);
+        log.info("다른 사용자의 공개 작품 목록 조회 - 사용자 ID: {}", userId);
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<Artwork> artworks = artworkRepository.findByUser_UserIdAndVisibilityOrderByCreatedAtDesc(
