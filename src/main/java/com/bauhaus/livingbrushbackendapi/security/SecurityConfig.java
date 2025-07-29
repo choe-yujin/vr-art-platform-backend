@@ -45,8 +45,13 @@ public class SecurityConfig {
             // --- Swagger UI v3 ---
             "/swagger-ui/**", "/v3/api-docs/**",
 
-            // --- Authentication ---
-            "/api/auth/**", // 로그인, health check 등 인증 관련 모든 경로 포함
+            // --- Authentication (명시적으로 추가) ---
+            "/api/auth/login/google", // Google 로그인
+            "/api/auth/login/meta",   // Meta 로그인
+            "/api/auth/signup/meta",  // Meta 회원가입
+            "/api/auth/refresh",      // 토큰 갱신
+            "/api/auth/health",       // Health check
+            "/api/auth/**", // 기타 인증 관련 모든 경로
 
             // --- Development ---
             "/api/dev/**", // 개발용 테스트 API 경로

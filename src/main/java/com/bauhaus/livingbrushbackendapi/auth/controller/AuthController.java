@@ -63,11 +63,18 @@ public class AuthController {
             @ApiResponse(responseCode = "401", description = "인증 실패")
     })
     public ResponseEntity<AuthResponse> googleLogin(@Valid @RequestBody GoogleLoginRequest request) {
-        log.info("Google 로그인 요청 - Platform: {}", request.getPlatform());
-        AuthResponse response = authFacadeService.authenticate(Provider.GOOGLE, request);
-        // [FIX] Changed getUserId() to userId() and getRole() to role()
-        log.info("Google 로그인 성공 - User ID: {}, Role: {}", response.userId(), response.role());
-        return ResponseEntity.ok(response);
+        log.info("🚀 Google 로그인 요청 진입 - Platform: {}, idToken 길이: {}", 
+                request.getPlatform(), request.idToken() != null ? request.idToken().length() : 0);
+        
+        try {
+            AuthResponse response = authFacadeService.authenticate(Provider.GOOGLE, request);
+            log.info("✅ Google 로그인 성공 - User ID: {}, Role: {}, isNewUser: {}", 
+                    response.userId(), response.role(), response.isNewUser());
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("❌ Google 로그인 실패 - 오류: {}", e.getMessage(), e);
+            throw e;
+        }
     }
 
     @PostMapping("/login/meta")
