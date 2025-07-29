@@ -8,6 +8,9 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.io.Serializable;
+import java.util.Objects;
+
 /**
  * 팔로우 관계 엔티티
  * 
@@ -18,29 +21,23 @@ import lombok.NoArgsConstructor;
  * @version 1.0
  */
 @Entity
-@Table(name = "follows", 
-       uniqueConstraints = @UniqueConstraint(columnNames = {"follower_id", "following_id"}))
+@Table(name = "follows")
+@IdClass(Follow.FollowId.class)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Follow extends BaseEntity {
 
     /**
-     * 자동 생성 ID (PK)
+     * 팔로우하는 사용자 ID (팔로워) - 복합키의 일부
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "follow_id")
-    private Long followId;
-
-    /**
-     * 팔로우하는 사용자 ID (팔로워)
-     */
     @Column(name = "follower_id", nullable = false)
     private Long followerId;
 
     /**
-     * 팔로우받는 사용자 ID (팔로잉)
+     * 팔로우받는 사용자 ID (팔로잉) - 복합키의 일부
      */
+    @Id
     @Column(name = "following_id", nullable = false)
     private Long followingId;
 
@@ -106,5 +103,34 @@ public class Follow extends BaseEntity {
      */
     public boolean isSameRelation(Long followerId, Long followingId) {
         return this.followerId.equals(followerId) && this.followingId.equals(followingId);
+    }
+
+    /**
+     * 복합키 클래스
+     */
+    @Getter
+    @NoArgsConstructor
+    public static class FollowId implements Serializable {
+        private Long followerId;
+        private Long followingId;
+
+        public FollowId(Long followerId, Long followingId) {
+            this.followerId = followerId;
+            this.followingId = followingId;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            FollowId followId = (FollowId) o;
+            return Objects.equals(followerId, followId.followerId) && 
+                   Objects.equals(followingId, followId.followingId);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(followerId, followingId);
+        }
     }
 }
