@@ -354,27 +354,46 @@ public class UserProfileService {
     public com.bauhaus.livingbrushbackendapi.user.dto.response.PublicUserProfileResponse getPublicUserProfile(
             Long targetUserId, Long currentUserId) {
         
-        User targetUser = userRepository.findById(targetUserId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-
-        Optional<UserProfile> profileOpt = userProfileRepository.findByUserIdWithUser(targetUserId);
+        log.info("공개 프로필 조회 시작 - targetUserId: {}, currentUserId: {}", targetUserId, currentUserId);
         
-        // 팔로우 상태 확인 (currentUserId가 null이면 비로그인 상태 → null 반환)
-        Boolean isFollowing = null; // 비회원 기본값
-        if (currentUserId != null) {
-            isFollowing = isUserFollowing(currentUserId, targetUserId); // true 또는 false
-        }
+        try {
+            User targetUser = userRepository.findById(targetUserId)
+                    .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+            
+            log.info("대상 사용자 조회 성공 - nickname: {}", targetUser.getNickname());
 
-        // 공개 작품 수 조회
-        int publicArtworkCount = getPublicArtworkCount(targetUserId);
+            Optional<UserProfile> profileOpt = userProfileRepository.findByUserIdWithUser(targetUserId);
+            log.info("UserProfile 조회 결과 - present: {}", profileOpt.isPresent());
+            
+            // 팔로우 상태 확인 (currentUserId가 null이면 비로그인 상태 → null 반환)
+            Boolean isFollowing = null; // 비회원 기본값
+            if (currentUserId != null) {
+                log.info("팔로우 상태 확인 시작 - currentUserId: {}, targetUserId: {}", currentUserId, targetUserId);
+                isFollowing = isUserFollowing(currentUserId, targetUserId); // true 또는 false
+                log.info("팔로우 상태 확인 완료 - isFollowing: {}", isFollowing);
+            } else {
+                log.info("비회원 사용자 - 팔로우 상태 null로 설정");
+            }
 
-        if (profileOpt.isPresent()) {
-            UserProfile profile = profileOpt.get();
-            return com.bauhaus.livingbrushbackendapi.user.dto.response.PublicUserProfileResponse
-                    .from(targetUser, profile, isFollowing, publicArtworkCount);
-        } else {
-            return com.bauhaus.livingbrushbackendapi.user.dto.response.PublicUserProfileResponse
-                    .fromUserOnly(targetUser, isFollowing, publicArtworkCount);
+            // 공개 작품 수 조회
+            log.info("공개 작품 수 조회 시작 - targetUserId: {}", targetUserId);
+            int publicArtworkCount = getPublicArtworkCount(targetUserId);
+            log.info("공개 작품 수 조회 완료 - count: {}", publicArtworkCount);
+
+            if (profileOpt.isPresent()) {
+                UserProfile profile = profileOpt.get();
+                log.info("UserProfile 존재 - 정상 응답 생성");
+                return com.bauhaus.livingbrushbackendapi.user.dto.response.PublicUserProfileResponse
+                        .from(targetUser, profile, isFollowing, publicArtworkCount);
+            } else {
+                log.info("UserProfile 없음 - 기본값으로 응답 생성");
+                return com.bauhaus.livingbrushbackendapi.user.dto.response.PublicUserProfileResponse
+                        .fromUserOnly(targetUser, isFollowing, publicArtworkCount);
+            }
+        } catch (Exception e) {
+            log.error("공개 프로필 조회 중 오류 발생 - targetUserId: {}, currentUserId: {}, error: {}", 
+                    targetUserId, currentUserId, e.getMessage(), e);
+            throw e;
         }
     }
 
@@ -414,10 +433,22 @@ public class UserProfileService {
      * 팔로우 상태 확인
      */
     private boolean isUserFollowing(Long followerId, Long followingId) {
+        log.info("팔로우 상태 확인 - followerId: {}, followingId: {}", followerId, followingId);
+        
         if (followerId == null || followingId == null) {
+            log.info("팔로우 상태 확인 - null 파라미터로 인해 false 반환");
             return false;
         }
-        return followRepository.existsByFollowerIdAndFollowingId(followerId, followingId);
+        
+        try {
+            boolean result = followRepository.existsByFollowerIdAndFollowingId(followerId, followingId);
+            log.info("팔로우 상태 확인 완료 - result: {}", result);
+            return result;
+        } catch (Exception e) {
+            log.error("팔로우 상태 확인 중 오류 - followerId: {}, followingId: {}, error: {}", 
+                    followerId, followingId, e.getMessage(), e);
+            throw e;
+        }
     }
 
     /**
