@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -72,17 +73,17 @@ public interface ArtworkRepository extends JpaRepository<Artwork, Long> {
      * 제목 또는 설명으로 공개 작품 검색
      */
     @Query("SELECT a FROM Artwork a WHERE a.visibility = 'PUBLIC' AND " +
-           "(LOWER(a.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
-           "LOWER(a.description) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
-           "ORDER BY a.createdAt DESC")
+            "(LOWER(a.title) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+            "LOWER(a.description) LIKE LOWER(CONCAT('%', :keyword, '%'))) " +
+            "ORDER BY a.createdAt DESC")
     Page<Artwork> searchPublicArtworksByTitleOrDescription(@Param("keyword") String keyword, Pageable pageable);
 
     /**
      * 특정 사용자의 작품을 제목으로 검색
      */
     @Query("SELECT a FROM Artwork a WHERE a.user.userId = :userId AND " +
-           "LOWER(a.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
-           "ORDER BY a.createdAt DESC")
+            "LOWER(a.title) LIKE LOWER(CONCAT('%', :keyword, '%')) " +
+            "ORDER BY a.createdAt DESC")
     List<Artwork> searchUserArtworksByTitle(@Param("userId") Long userId, @Param("keyword") String keyword);
 
     // ====================================================================
@@ -125,19 +126,27 @@ public interface ArtworkRepository extends JpaRepository<Artwork, Long> {
     long countByUser_UserId(Long userId);
 
     /**
+     * 특정 사용자가 작성한 모든 작품의 총 조회수를 합산합니다.
+     * @param userId 사용자 ID
+     * @return 총 조회수 (작품이 없으면 null을 반환할 수 있으므로 Integer 사용)
+     */
+    @Query("SELECT SUM(a.viewCount) FROM Artwork a WHERE a.user.userId = :userId")
+    Integer sumViewCountByUserId(@Param("userId") Long userId);
+
+    /**
      * 특정 사용자의 공개 작품 중 즐겨찾기가 많은 상위 작품들
      */
     @Query("SELECT a FROM Artwork a WHERE a.user.userId = :userId AND a.visibility = 'PUBLIC' " +
-           "ORDER BY a.favoriteCount DESC, a.createdAt DESC")
+            "ORDER BY a.favoriteCount DESC, a.createdAt DESC")
     List<Artwork> findTopPublicArtworksByUser(@Param("userId") Long userId, Pageable pageable);
 
     /**
      * 최근 인기 작품들 (지난 30일)
      */
     @Query("SELECT a FROM Artwork a WHERE a.visibility = 'PUBLIC' AND " +
-           "a.createdAt >= :sinceDate " +
-           "ORDER BY a.favoriteCount DESC, a.viewCount DESC, a.createdAt DESC")
-    List<Artwork> findRecentPopularArtworks(@Param("sinceDate") java.time.LocalDateTime sinceDate, Pageable pageable);
+            "a.createdAt >= :sinceDate " +
+            "ORDER BY a.favoriteCount DESC, a.viewCount DESC, a.createdAt DESC")
+    List<Artwork> findRecentPopularArtworks(@Param("sinceDate") LocalDateTime sinceDate, Pageable pageable);
 
     // ====================================================================
     // ✨ 관리용 쿼리들
@@ -147,5 +156,5 @@ public interface ArtworkRepository extends JpaRepository<Artwork, Long> {
      * GLB URL이 있지만 실제 파일이 없을 수 있는 작품들 조회 (정리용)
      */
     @Query("SELECT a FROM Artwork a WHERE a.glbUrl IS NOT NULL AND a.createdAt < :beforeDate ORDER BY a.createdAt")
-    List<Artwork> findPotentialOrphanArtworks(@Param("beforeDate") java.time.LocalDateTime beforeDate);
+    List<Artwork> findPotentialOrphanArtworks(@Param("beforeDate") LocalDateTime beforeDate);
 }

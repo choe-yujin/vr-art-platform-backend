@@ -842,7 +842,8 @@ public class ArtworkService {
      */
     @Transactional
     public void incrementViewCount(Long artworkId) {
-        artworkRepository.findById(artworkId).ifPresent(Artwork::increaseViewCount);
+        // [수정] Artwork 엔티티의 변경된 메소드명(incrementViewCount)을 호출합니다.
+        artworkRepository.findById(artworkId).ifPresent(Artwork::incrementViewCount);
     }
 
     // ====================================================================

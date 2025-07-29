@@ -23,10 +23,10 @@ import java.util.Objects;
 /**
  * 3D 작품 정보 엔티티 (Rich Domain Model)
  * 자신의 상태와 비즈니스 규칙을 스스로 책임지는 '도메인 전문가'입니다.
- * 이 객체는 생성되거나 변경될 때마다 스스로의 유효성을 보장합니다.
+ * [개선] DB 스키마 변경 없이 SocialService와 연동하도록 수정합니다.
  *
  * @author Bauhaus Team
- * @version 3.2
+ * @version 4.2
  */
 @Entity
 @Table(name = "artworks")
@@ -76,11 +76,15 @@ public class Artwork extends BaseEntity {
     @Column(name = "price_cash", precision = 10, scale = 2)
     private BigDecimal priceCash;
 
+    // [수정] 기존 DB 스키마와 일관성을 위해 favoriteCount 필드명을 유지합니다.
     @Column(name = "favorite_count", nullable = false)
     private int favoriteCount;
 
     @Column(name = "view_count", nullable = false)
     private int viewCount;
+
+    // [제거] DB 스키마에 없는 comment_count 필드는 제거합니다.
+    // private int commentCount;
 
     @Builder(access = AccessLevel.PRIVATE) // 외부에서 빌더 직접 사용을 막고, 정적 팩토리 메소드를 통하도록 강제
     private Artwork(User user, String title, String description, String glbUrl, BigDecimal priceCash) {
@@ -92,6 +96,7 @@ public class Artwork extends BaseEntity {
         this.visibility = VisibilityType.PRIVATE; // 생성 시 항상 비공개로 시작
         this.favoriteCount = 0;
         this.viewCount = 0;
+        // this.commentCount = 0; // 제거
         validate(); // 생성 시점에 스스로 유효성 검증
     }
 
@@ -171,7 +176,6 @@ public class Artwork extends BaseEntity {
         if (user == null || this.user == null) {
             return false;
         }
-        // ID 기반 비교로 변경 (프록시 객체 문제 해결)
         return Objects.equals(this.user.getUserId(), user.getUserId());
     }
 
@@ -252,22 +256,26 @@ public class Artwork extends BaseEntity {
         }
     }
 
-    // --- 카운트 관리 ---
-    public void increaseViewCount() {
+    // --- 카운트 관리 (SocialService에서 호출) ---
+
+    public void incrementViewCount() {
         this.viewCount++;
     }
 
-    public void increaseFavoriteCount() {
+    // [수정] 메소드명을 favoriteCount에 맞춰 수정합니다.
+    public void incrementFavoriteCount() {
         this.favoriteCount++;
     }
 
-
-
-    public void decreaseFavoriteCount() {
+    public void decrementFavoriteCount() {
         if (this.favoriteCount > 0) {
             this.favoriteCount--;
         }
     }
+
+    // [제거] commentCount 관련 메소드는 제거합니다.
+    // public void incrementCommentCount() { ... }
+    // public void decrementCommentCount() { ... }
 
     // --- 객체 동일성 비교 ---
     @Override
