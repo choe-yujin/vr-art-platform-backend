@@ -16,6 +16,7 @@ import com.bauhaus.livingbrushbackendapi.user.entity.Follow;
 import com.bauhaus.livingbrushbackendapi.user.entity.User;
 import com.bauhaus.livingbrushbackendapi.user.repository.FollowRepository;
 import com.bauhaus.livingbrushbackendapi.user.repository.UserRepository;
+import com.bauhaus.livingbrushbackendapi.user.service.UserProfileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -48,6 +49,7 @@ public class SocialService {
     private final FollowRepository followRepository;
     private final UserRepository userRepository;
     private final ArtworkRepository artworkRepository;
+    private final UserProfileService userProfileService;  // 이 부분 추가
 
     // ========== 좋아요 기능 ==========
 
@@ -239,8 +241,8 @@ public class SocialService {
             }
             
             // TODO: UserProfile 팔로워/팔로잉 수 업데이트
-            // userProfileService.decrementFollowerCount(followingId);
-            // userProfileService.decrementFollowingCount(followerId);
+            userProfileService.decrementFollowerCount(followingId);
+            userProfileService.decrementFollowingCount(followerId);
             
             log.info("언팔로우 완료: followerId={}, followingId={}", followerId, followingId);
             
@@ -260,8 +262,8 @@ public class SocialService {
             followRepository.save(follow);
             
             // TODO: UserProfile 팔로워/팔로잉 수 업데이트
-            // userProfileService.incrementFollowerCount(followingId);
-            // userProfileService.incrementFollowingCount(followerId);
+            userProfileService.incrementFollowerCount(followingId);
+            userProfileService.incrementFollowingCount(followerId);
             
             log.info("팔로우 완료: followerId={}, followingId={}", followerId, followingId);
             
