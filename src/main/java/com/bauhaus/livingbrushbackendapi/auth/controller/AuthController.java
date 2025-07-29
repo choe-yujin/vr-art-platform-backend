@@ -72,6 +72,11 @@ public class AuthController {
         log.info("🚀 Google 로그인 요청 진입 - Platform: {}, idToken 길이: {}", 
                 request.getPlatform(), request.idToken() != null ? request.idToken().length() : 0);
         
+        // 🔍 [DEBUG] 받은 요청 상세 정보 출력
+        log.info("🔍 [DEBUG] 받은 요청 - idToken: {}..., platform: {}", 
+                request.idToken() != null ? request.idToken().substring(0, Math.min(50, request.idToken().length())) : "null",
+                request.platform());
+        
         try {
             AuthResponse response = authFacadeService.authenticate(Provider.GOOGLE, request);
             log.info("✅ Google 로그인 성공 - User ID: {}, Role: {}, isNewUser: {}", 
