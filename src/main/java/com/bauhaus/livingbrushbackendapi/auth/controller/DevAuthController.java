@@ -7,7 +7,6 @@ import com.bauhaus.livingbrushbackendapi.security.jwt.JwtTokenProvider;
 import com.bauhaus.livingbrushbackendapi.user.entity.User;
 import com.bauhaus.livingbrushbackendapi.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -52,6 +51,7 @@ public class DevAuthController {
                 accessToken,
                 refreshToken,
                 testUser.getUserId(),
+                testUser.getNickname(), // 닉네임 추가
                 testUser.getRole(),
                 false // 개발자 테스트용 토큰은 신규 가입이 아님
         );
@@ -61,9 +61,9 @@ public class DevAuthController {
 
     /**
      * AI 개발자 전용: 영구 테스트 코드 생성
-     * 
+     *
      * 5분 제한 없이 항상 사용 가능한 VR 로그인 테스트 코드를 생성합니다.
-     * 
+     *
      * @param userId 테스트할 사용자 ID (기본값: 1)
      * @return 영구 테스트 QR 토큰과 수동 코드
      */
@@ -75,7 +75,7 @@ public class DevAuthController {
 
     /**
      * AI 개발자 전용: 기본 사용자로 영구 테스트 코드 생성
-     * 
+     *
      * @return 사용자 ID 1번의 영구 테스트 코드
      */
     @GetMapping("/vr-test-code")

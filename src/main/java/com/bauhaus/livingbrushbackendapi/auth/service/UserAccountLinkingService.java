@@ -25,7 +25,7 @@ import java.util.Optional;
  * 서비스는 저수준의 데이터 조작에서 벗어나 고수준의 정책 결정과 흐름 제어에 집중합니다.
  *
  * @author Bauhaus Team
- * @since 1.4 (Production-Ready Refactoring)
+ * @since 1.5 (Refactored for new User Entity API)
  */
 @Slf4j
 @Service
@@ -42,9 +42,6 @@ public class UserAccountLinkingService {
      * @param accountInfo OAuth 제공자로부터 받은 사용자 정보
      * @return 계정 처리 결과 (기존 로그인, 신규 연동, 신규 생성)
      */
-    // [개선] propagation = Propagation.REQUIRES_NEW
-    // 호출하는 서비스가 read-only 트랜잭션을 가지고 있더라도, 이 메소드는 항상 새로운 '쓰기 가능' 트랜잭션을 시작하도록 보장합니다.
-    // 이를 통해 신규 사용자 생성(INSERT) 시 발생하는 'read-only transaction' 오류를 원천적으로 방지합니다.
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public AccountLinkingResult handleUnifiedAccountScenario(OAuthAccountInfo accountInfo) {
         validateAccountInfo(accountInfo);
@@ -58,7 +55,6 @@ public class UserAccountLinkingService {
             // 로그인 시 프로필 정보가 변경되었을 경우 업데이트합니다.
             if (user.updateProfile(accountInfo.getName(), accountInfo.getEmail())) {
                 // JPA의 변경 감지(dirty checking)에 의해 트랜잭션 커밋 시 자동으로 UPDATE 쿼리가 실행됩니다.
-                // 명시적인 save 호출은 생략 가능하지만, 의도를 명확히 하기 위해 유지할 수도 있습니다.
             }
             log.info("기존 {} 계정 로그인 - User ID: {}", provider, user.getUserId());
             return AccountLinkingResult.existingLogin(user);
@@ -91,7 +87,8 @@ public class UserAccountLinkingService {
     @Transactional
     public User unlinkOAuthAccount(User user, Provider provider) {
         validateUserAndProvider(user, provider);
-        user.unlinkAccount(provider);
+        // [수정] User 엔티티의 명확해진 API(unlinkOAuthAccount)를 직접 호출합니다.
+        user.unlinkOAuthAccount(provider);
         log.info("OAuth 계정 연동 해제 완료 - User ID: {}, Provider: {}", user.getUserId(), provider);
         return userRepository.save(user);
     }
@@ -105,12 +102,13 @@ public class UserAccountLinkingService {
         if (user.isProviderAccountLinked(provider)) {
             throw new BusinessException.AccountAlreadyLinkedException("이미 연동된 계정입니다.");
         }
-        user.linkAccount(provider, providerId);
+        // [수정] User 엔티티의 명확해진 API(linkOAuthAccount)를 직접 호출합니다.
+        user.linkOAuthAccount(provider, providerId);
+
         if (user.getRole() == UserRole.GUEST && provider == Provider.META) {
             user.promoteToArtist();
             userPermissionService.logPermissionChange(user, UserRole.GUEST, UserRole.ARTIST, "Meta 계정 연동");
         }
-        // [개선] 모든 변경이 끝난 후 save를 한 번만 호출하여 명확성을 높입니다.
         userRepository.save(user);
     }
 
@@ -128,7 +126,6 @@ public class UserAccountLinkingService {
         User savedUser = userRepository.save(newUser);
 
         // 3. 프로필 이미지 업로드 (Side-Effect 처리)
-        // [개선] 비동기 호출을 통해 API 응답 속도를 향상시킵니다.
         handleOAuthProfileImageUpload(savedUser, accountInfo.getProfileImageUrl(), provider);
 
         return savedUser;
@@ -152,28 +149,25 @@ public class UserAccountLinkingService {
 
     /**
      * OAuth 프로필 이미지를 S3에 업로드하고 사용자 프로필을 업데이트합니다.
-     * [개선] @Async 어노테이션을 통해 이 메소드를 별도의 스레드에서 비동기적으로 실행합니다.
-     * 이를 통해 이미지 처리 시간을 기다리지 않고 클라이언트에게 즉시 응답을 보낼 수 있습니다.
-     *
-     * 중요: @Async가 올바르게 동작하려면, 이 메소드는 다른 Spring Bean(@Service)으로 분리되어야 합니다.
-     * (예: AsyncUserProfileService) 그리고 메인 애플리케이션 클래스에 @EnableAsync 어노테이션을 추가해야 합니다.
+     * 이 메소드는 비동기로 실행되어 API 응답 속도에 영향을 주지 않습니다.
      */
     @Async
-    @Transactional // 비동기 메소드도 자체 트랜잭션이 필요합니다.
+    @Transactional
     public void handleOAuthProfileImageUpload(User user, String imageUrl, Provider provider) {
         if (imageUrl == null || imageUrl.isBlank()) {
             return;
         }
         try {
-            // 비동기 실행을 위해선 user 객체를 다시 조회해야 할 수 있습니다.
+            // 비동기 실행 및 다른 트랜잭션 컨텍스트에서 실행되므로, 영속성 컨텍스트에 있는 User를 다시 조회합니다.
             User managedUser = userRepository.findById(user.getUserId())
-                    .orElseThrow(() -> new IllegalStateException("비동기 프로필 이미지 처리 중 사용자를 찾을 수 없습니다."));
+                    .orElseThrow(() -> new IllegalStateException("비동기 프로필 이미지 처리 중 사용자를 찾을 수 없습니다: " + user.getUserId()));
 
             String s3ProfileImageUrl = profileImageService.uploadProfileImageFromUrl(
                     managedUser.getUserId(), imageUrl);
 
             managedUser.getUserProfile().updateProfileImage(s3ProfileImageUrl);
-            userRepository.save(managedUser); // 변경 사항을 명시적으로 저장
+            // 변경 감지에 의해 저장되지만, 비동기 로직의 명확성을 위해 save를 호출합니다.
+            userRepository.save(managedUser);
 
             log.info("OAuth 프로필 이미지 S3 업로드 완료 - User ID: {}, Provider: {}, S3 URL: {}",
                     managedUser.getUserId(), provider, s3ProfileImageUrl);
@@ -181,7 +175,7 @@ public class UserAccountLinkingService {
         } catch (Exception e) {
             log.warn("OAuth 프로필 이미지 업로드 실패, 기본 이미지 사용 - User ID: {}, Provider: {}, 오류: {}",
                     user.getUserId(), provider, e.getMessage());
-            // 이미지 업로드 실패가 전체 회원가입 흐름을 중단시키지 않도록 예외를 처리합니다.
+            // 이미지 업로드 실패가 전체 회원가입/로그인 흐름을 중단시키지 않도록 예외를 처리합니다.
         }
     }
 
@@ -193,8 +187,17 @@ public class UserAccountLinkingService {
         };
     }
 
-    private void validateAccountInfo(OAuthAccountInfo accountInfo) { /* ... 유효성 검증 로직 ... */ }
-    private void validateUserAndProvider(User user, Provider provider) { /* ... 유효성 검증 로직 ... */ }
+    private void validateAccountInfo(OAuthAccountInfo accountInfo) {
+        if (accountInfo == null || accountInfo.getProvider() == null || accountInfo.getProviderUserId() == null) {
+            throw new IllegalArgumentException("OAuth 계정 정보가 유효하지 않습니다.");
+        }
+    }
+
+    private void validateUserAndProvider(User user, Provider provider) {
+        if (user == null || provider == null) {
+            throw new IllegalArgumentException("사용자 또는 Provider 정보가 유효하지 않습니다.");
+        }
+    }
 
     // =================================================================
     // = 내부 DTO 및 Exception 클래스

@@ -22,10 +22,10 @@ import java.util.Objects;
 
 /**
  * 통합 계정 사용자 정보 엔티티 (Rich Domain Model)
- * [최종] Hibernate 6의 @JdbcTypeCode를 사용하여 가장 간결하고 현대적인 방식으로 Enum을 매핑합니다.
+ * [개선] @Setter를 제거하여 엔티티의 상태 변경을 비즈니스 메소드로만 제어하도록 강제하여 안정성을 높입니다.
  *
  * @author Bauhaus Team
- * @version 6.0
+ * @version 7.2
  */
 @Entity
 @Table(name = "users", indexes = {
@@ -34,7 +34,6 @@ import java.util.Objects;
         @Index(name = "users_facebook_user_id_idx", columnList = "facebook_user_id")
 })
 @Getter
-@Setter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @ToString(exclude = {"userSettings", "userProfile", "artworks", "mediaList", "aiRequestLogs"})
 @DynamicInsert
@@ -63,24 +62,20 @@ public class User extends BaseEntity {
     private String facebookUserId;
 
     // ========== 계정 생성 및 권한 추적 ==========
-    // Provider는 DB에 네이티브 ENUM 타입이 없으므로, 표준 String으로 매핑합니다.
     @Enumerated(EnumType.STRING)
     @Column(name = "primary_provider", nullable = false, length = 20)
     private Provider primaryProvider;
 
-    // [수정] DB의 'user_role' 네이티브 Enum 타입과 매핑하는 가장 간결한 방법
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, columnDefinition = "userrole")
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private UserRole role;
 
-    // [수정] 동일한 방식으로 적용
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, columnDefinition = "userrole")
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private UserRole highestRole;
 
-    // [수정] 동일한 방식으로 적용
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, columnDefinition = "usermode")
     @JdbcTypeCode(SqlTypes.NAMED_ENUM)
@@ -131,25 +126,11 @@ public class User extends BaseEntity {
         this.currentMode = UserMode.getDefaultMode();
         this.accountLinked = false;
 
-        // UserSettings와 UserProfile 자동 생성
         this.assignSettings(new UserSetting(this));
         this.assignProfile(new UserProfile(this, oauthProfileImageUrl));
     }
 
-    // ========== 비즈니스 로직 및 헬퍼 메서드 ==========
-
-    /**
-     * 사용자 프로필 이미지 URL 반환
-     * UserProfile이 없으면 환경변수 기반 기본 이미지 URL 반환
-     */
-    public String getProfileImageUrl() {
-        if (this.userProfile != null && this.userProfile.getProfileImageUrl() != null) {
-            return this.userProfile.getProfileImageUrl();
-        }
-        // 환경변수에서 기본 프로필 이미지 URL 가져오기
-        return System.getProperty("app.profile.default-image-url", 
-               System.getenv("DEFAULT_PROFILE_IMAGE_URL"));
-    }
+    // ========== 정적 팩토리 메소드 (객체 생성 역할) ==========
 
     public static User createNewMetaUser(String providerId, String email, String name, String oauthProfileImageUrl) {
         return User.builder()
@@ -179,11 +160,17 @@ public class User extends BaseEntity {
                 .email(email)
                 .primaryProvider(Provider.FACEBOOK)
                 .providerId(providerId)
-                .role(UserRole.USER) // 혹은 다른 기본 역할
+                .role(UserRole.USER)
                 .oauthProfileImageUrl(oauthProfileImageUrl)
                 .build();
     }
 
+    // ========== 비즈니스 로직 (상태 변경 역할) ==========
+
+    /**
+     * 사용자를 아티스트 등급으로 승격시킵니다.
+     * 현재 권한이 아티스트보다 낮은 경우에만 동작합니다.
+     */
     public void promoteToArtist() {
         if (this.role.getLevel() < UserRole.ARTIST.getLevel()) {
             this.role = UserRole.ARTIST;
@@ -194,88 +181,71 @@ public class User extends BaseEntity {
         }
     }
 
+    /**
+     * 사용자의 현재 활동 모드를 전환합니다.
+     * 이 메소드는 상태만 변경하며, 권한 검증은 서비스 계층에서 이미 수행된 것으로 가정합니다.
+     *
+     * @param newMode 새로 설정할 사용자 모드
+     */
+    public void switchMode(UserMode newMode) {
+        if (newMode != null) {
+            this.currentMode = newMode;
+        }
+    }
+
+    /**
+     * 새로운 OAuth 계정을 현재 사용자에게 연동합니다.
+     *
+     * @param provider   연동할 OAuth 제공자 (e.g., GOOGLE)
+     * @param providerId 해당 제공자의 사용자 고유 ID
+     */
     public void linkOAuthAccount(Provider provider, String providerId) {
+        if (isProviderAccountLinked(provider)) {
+            throw new IllegalStateException(provider.name() + " 계정이 이미 연동되어 있습니다.");
+        }
+
         switch (provider) {
-            case META -> {
-                if (this.metaUserId != null) throw new IllegalStateException("Meta 계정이 이미 연동되어 있습니다.");
-                this.metaUserId = providerId;
-            }
-            case GOOGLE -> {
-                if (this.googleUserId != null) throw new IllegalStateException("Google 계정이 이미 연동되어 있습니다.");
-                this.googleUserId = providerId;
-            }
-            case FACEBOOK -> {
-                if (this.facebookUserId != null) throw new IllegalStateException("Facebook 계정이 이미 연동되어 있습니다.");
-                this.facebookUserId = providerId;
-            }
+            case META -> this.metaUserId = providerId;
+            case GOOGLE -> this.googleUserId = providerId;
+            case FACEBOOK -> this.facebookUserId = providerId;
         }
         this.accountLinked = true;
     }
 
-    public void linkGoogleAccount(String googleUserId) {
-        if (this.googleUserId != null) {
-            throw new IllegalStateException("Google 계정이 이미 연동되어 있습니다.");
-        }
-        this.googleUserId = googleUserId;
-        this.accountLinked = true;
-    }
-
-    public boolean hasMetaAccount() {
-        return this.metaUserId != null;
-    }
-
-    public void initializeAsVrUser() {
-        if (this.role == UserRole.GUEST) {
-            this.role = UserRole.ARTIST;
-            this.highestRole = UserRole.ARTIST;
-            this.currentMode = UserMode.ARTIST;
-            this.artistQualifiedAt = LocalDateTime.now();
-        }
-    }
-
-    public boolean isAccountLinked() {
-        return this.accountLinked;
-    }
-
-    public Provider getPrimaryProvider() {
-        return this.primaryProvider;
-    }
-
+    /**
+     * 연동된 OAuth 계정을 해제합니다. 기본 계정은 해제할 수 없습니다.
+     *
+     * @param provider 해제할 OAuth 제공자
+     */
     public void unlinkOAuthAccount(Provider provider) {
-        switch (provider) {
-            case META -> {
-                if (this.metaUserId == null) throw new IllegalStateException("Meta 계정이 연동되어 있지 않습니다.");
-                if (this.primaryProvider == Provider.META) throw new IllegalStateException("기본 계정은 연동 해제할 수 없습니다.");
-                this.metaUserId = null;
-            }
-            case GOOGLE -> {
-                if (this.googleUserId == null) throw new IllegalStateException("Google 계정이 연동되어 있지 않습니다.");
-                if (this.primaryProvider == Provider.GOOGLE) throw new IllegalStateException("기본 계정은 연동 해제할 수 없습니다.");
-                this.googleUserId = null;
-            }
-            case FACEBOOK -> {
-                if (this.facebookUserId == null) throw new IllegalStateException("Facebook 계정이 연동되어 있지 않습니다.");
-                if (this.primaryProvider == Provider.FACEBOOK) throw new IllegalStateException("기본 계정은 연동 해제할 수 없습니다.");
-                this.facebookUserId = null;
-            }
+        if (!isProviderAccountLinked(provider)) {
+            throw new IllegalStateException(provider.name() + " 계정이 연동되어 있지 않습니다.");
+        }
+        if (this.primaryProvider == provider) {
+            throw new IllegalStateException("기본 계정은 연동 해제할 수 없습니다.");
         }
 
-        int linkedAccountCount = 0;
-        if (this.metaUserId != null) linkedAccountCount++;
-        if (this.googleUserId != null) linkedAccountCount++;
-        if (this.facebookUserId != null) linkedAccountCount++;
+        switch (provider) {
+            case META -> this.metaUserId = null;
+            case GOOGLE -> this.googleUserId = null;
+            case FACEBOOK -> this.facebookUserId = null;
+        }
 
-        this.accountLinked = linkedAccountCount > 1;
+        // [개선] 연동된 계정 수를 다시 세어 accountLinked 상태를 갱신합니다.
+        long linkedCount = List.of(metaUserId, googleUserId, facebookUserId)
+                .stream()
+                .filter(Objects::nonNull)
+                .count();
+        this.accountLinked = linkedCount > 1;
     }
 
-    public String getPrimaryProviderUserId() {
-        return switch (this.primaryProvider) {
-            case META -> this.metaUserId;
-            case GOOGLE -> this.googleUserId;
-            case FACEBOOK -> this.facebookUserId;
-        };
-    }
-
+    /**
+     * 사용자의 프로필 정보(닉네임, 이메일)를 업데이트합니다.
+     *
+     * @param newNickname 변경할 닉네임
+     * @param newEmail    변경할 이메일 (기존 이메일이 없을 경우에만 설정됨)
+     * @return 프로필이 실제로 변경되었는지 여부
+     */
     public boolean updateProfile(String newNickname, String newEmail) {
         boolean updated = false;
 
@@ -293,6 +263,33 @@ public class User extends BaseEntity {
         return updated;
     }
 
+    /**
+     * VR 최초 로그인 시 사용자를 게스트에서 아티스트로 즉시 승격시킵니다.
+     */
+    public void initializeAsVrUser() {
+        if (this.role == UserRole.GUEST) {
+            promoteToArtist();
+            this.currentMode = UserMode.ARTIST;
+        }
+    }
+
+    // ========== 조회용 헬퍼 메소드 (상태 조회 역할) ==========
+
+    /**
+     * [수정] 사용자 프로필 이미지 URL을 반환합니다.
+     * 엔티티는 더 이상 기본 이미지 URL을 알 책임이 없습니다.
+     * 이 로직은 서비스 계층(e.g., UserProfileService)으로 이동되었습니다.
+     */
+    public String getProfileImageUrl() {
+        if (this.userProfile != null && this.userProfile.getProfileImageUrl() != null) {
+            return this.userProfile.getProfileImageUrl();
+        }
+        return null; // 설정된 이미지가 없으면 null 반환
+    }
+
+    /**
+     * 특정 OAuth 제공자의 계정이 연동되어 있는지 확인합니다.
+     */
     public boolean isProviderAccountLinked(Provider provider) {
         return switch (provider) {
             case META -> this.metaUserId != null;
@@ -301,13 +298,18 @@ public class User extends BaseEntity {
         };
     }
 
-    public void linkAccount(Provider provider, String providerId) {
-        linkOAuthAccount(provider, providerId);
+    /**
+     * 최초 가입 시 사용한 Provider의 사용자 ID를 반환합니다.
+     */
+    public String getPrimaryProviderUserId() {
+        return switch (this.primaryProvider) {
+            case META -> this.metaUserId;
+            case GOOGLE -> this.googleUserId;
+            case FACEBOOK -> this.facebookUserId;
+        };
     }
 
-    public void unlinkAccount(Provider provider) {
-        unlinkOAuthAccount(provider);
-    }
+    // ========== 내부 구현 및 유효성 검증 ==========
 
     private void assignSettings(UserSetting settings) {
         this.userSettings = settings;
@@ -320,7 +322,7 @@ public class User extends BaseEntity {
     private static void validate(String nickname, Provider primaryProvider, String providerId) {
         validateNickname(nickname);
         if (primaryProvider == null || providerId == null || providerId.trim().isEmpty()) {
-            throw new IllegalArgumentException("최초 가입 Provider와 Provider ID는 필수입니다. (users_oauth_required 위반)");
+            throw new IllegalArgumentException("최초 가입 Provider와 Provider ID는 필수입니다.");
         }
     }
 
@@ -330,16 +332,21 @@ public class User extends BaseEntity {
         }
     }
 
+    // ========== JPA 및 객체 동일성 비교 ==========
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass() || this.userId == null) return false;
-        User user = (User) o;
-        return Objects.equals(this.getUserId(), user.getUserId());
+        if (o == null || getClass() != o.getClass()) return false;
+        User other = (User) o;
+        // 영속화되지 않은 엔티티는 항상 다른 것으로 간주합니다.
+        if (this.userId == null || other.userId == null) return false;
+        return Objects.equals(this.getUserId(), other.getUserId());
     }
 
     @Override
     public int hashCode() {
+        // 영속화된 엔티티의 ID를 기반으로 해시코드를 생성합니다.
         return Objects.hash(this.getUserId());
     }
 }

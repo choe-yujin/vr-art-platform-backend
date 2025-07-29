@@ -1,7 +1,8 @@
 package com.bauhaus.livingbrushbackendapi.auth.service;
 
 import com.bauhaus.livingbrushbackendapi.user.entity.User;
-import com.bauhaus.livingbrushbackendapi.user.entity.enumeration.Platform; // ✨ Import a 타입-세이프 Enum
+import com.bauhaus.livingbrushbackendapi.user.entity.enumeration.Platform;
+import com.bauhaus.livingbrushbackendapi.user.entity.enumeration.Provider; // [추가] Provider Enum import
 import com.bauhaus.livingbrushbackendapi.user.entity.enumeration.UserMode;
 import com.bauhaus.livingbrushbackendapi.user.entity.enumeration.UserRole;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +14,7 @@ import org.springframework.stereotype.Service;
  * 복잡한 정책을 단순하고 명확한 코드로 구현하여 중앙에서 관리합니다.
  *
  * @author Bauhaus Team
- * @since 1.1 (Refactored)
+ * @since 1.2 (API Alignment)
  */
 @Slf4j
 @Service
@@ -28,8 +29,8 @@ public class UserPermissionService {
         if (user == null) {
             return false;
         }
-        // ✨ 복잡한 if문을 하나의 명확한 논리식으로 통합
-        return user.getRole() == UserRole.ARTIST || user.hasMetaAccount();
+        // [수정] 존재하지 않는 hasMetaAccount() 대신, User 엔티티의 공식 API인 isProviderAccountLinked()를 사용합니다.
+        return user.getRole() == UserRole.ARTIST || user.isProviderAccountLinked(Provider.META);
     }
 
     /**
@@ -43,7 +44,6 @@ public class UserPermissionService {
      * 사용자가 관리자 권한을 가지고 있는지 확인합니다.
      */
     public boolean isAdmin(User user) {
-        // ✨ 역할 기반으로 명확하게 판단
         return user != null && user.getRole() == UserRole.ADMIN;
     }
 
@@ -66,7 +66,6 @@ public class UserPermissionService {
      * 정책: 아티스트 자격을 가진 사용자만 작품 생성 가능.
      */
     public boolean canCreateArtwork(User user) {
-        // ✨ 다른 메소드를 재사용하여 논리를 일관되게 유지
         return isArtistQualified(user);
     }
 
@@ -75,7 +74,6 @@ public class UserPermissionService {
      * 정책: VR 앱 사용자는 ARTIST, AR 앱 사용자는 GUEST.
      */
     public UserRole determineRecommendedRole(Platform platform) {
-        // ✨ 안전한 Enum을 사용하여 실수를 방지
         if (platform == Platform.VR) {
             return UserRole.ARTIST;
         }
@@ -100,7 +98,6 @@ public class UserPermissionService {
         if (isGuest(user)) {
             return "ROLE_GUEST"; // null 사용자도 GUEST로 처리
         }
-        // ✨ Enum의 name()을 활용하여 코드를 간결하게 유지
         return "ROLE_" + user.getRole().name();
     }
 
@@ -112,7 +109,7 @@ public class UserPermissionService {
         if (user == null || requiredRole == null) {
             return false;
         }
-        // ✨ Enum의 순서(ordinal)를 이용하면 권한 체계가 확장되어도 코드를 수정할 필요가 없음
+        // Enum의 순서(ordinal)를 이용하면 권한 체계가 확장되어도 코드를 수정할 필요가 없음
         return user.getRole().ordinal() >= requiredRole.ordinal();
     }
 
