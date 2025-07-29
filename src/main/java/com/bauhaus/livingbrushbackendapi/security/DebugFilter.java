@@ -26,19 +26,30 @@ public class DebugFilter extends OncePerRequestFilter {
         String uri = request.getRequestURI();
         String method = request.getMethod();
         
-        log.info("🔍 [DEBUG] 요청 진입: {} {}", method, uri);
-        
-        // Authorization 헤더 확인
-        String authHeader = request.getHeader("Authorization");
-        if (authHeader != null) {
-            log.info("🔍 [DEBUG] Authorization 헤더 존재: {}", authHeader.substring(0, Math.min(20, authHeader.length())) + "...");
+        // 🎯 특히 /api/auth/ 경로는 더 자세히 로그
+        if (uri.startsWith("/api/auth/")) {
+            log.info("🔍 [DEBUG-AUTH] 요청 진입: {} {} - ContentType: {}", 
+                    method, uri, request.getContentType());
+            
+            // Authorization 헤더 확인
+            String authHeader = request.getHeader("Authorization");
+            if (authHeader != null) {
+                log.info("🔍 [DEBUG-AUTH] Authorization 헤더 존재: {}", authHeader.substring(0, Math.min(20, authHeader.length())) + "...");
+            } else {
+                log.info("🔍 [DEBUG-AUTH] Authorization 헤더 없음");
+            }
         } else {
-            log.info("🔍 [DEBUG] Authorization 헤더 없음");
+            log.info("🔍 [DEBUG] 요청 진입: {} {}", method, uri);
         }
         
         try {
             filterChain.doFilter(request, response);
-            log.info("🔍 [DEBUG] 요청 완료: {} {} - Status: {}", method, uri, response.getStatus());
+            
+            if (uri.startsWith("/api/auth/")) {
+                log.info("🔍 [DEBUG-AUTH] 요청 완료: {} {} - Status: {}", method, uri, response.getStatus());
+            } else {
+                log.info("🔍 [DEBUG] 요청 완료: {} {} - Status: {}", method, uri, response.getStatus());
+            }
         } catch (Exception e) {
             log.error("🔍 [DEBUG] 요청 중 오류: {} {} - Error: {}", method, uri, e.getMessage());
             throw e;

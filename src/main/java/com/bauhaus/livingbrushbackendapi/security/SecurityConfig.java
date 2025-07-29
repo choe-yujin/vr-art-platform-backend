@@ -4,6 +4,7 @@ import com.bauhaus.livingbrushbackendapi.security.jwt.JwtAccessDeniedHandler;
 import com.bauhaus.livingbrushbackendapi.security.jwt.JwtAuthenticationEntryPoint;
 import com.bauhaus.livingbrushbackendapi.security.jwt.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -28,6 +29,7 @@ import java.util.List;
  * - CORS(Cross-Origin Resource Sharing) 정책 설정 추가
  * - PasswordEncoder Bean 등록
  */
+@Slf4j
 @Configuration
 @EnableWebSecurity
 @RequiredArgsConstructor
@@ -66,7 +68,9 @@ public class SecurityConfig {
      */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
+        log.info("🔧 SecurityFilterChain 설정 시작");
+        
+        SecurityFilterChain filterChain = http
                 // 1. CORS 설정 적용
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
@@ -81,22 +85,24 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                 // 5. 요청 경로별 인가 규칙 설정
-                .authorizeHttpRequests(auth -> auth
-                        // 🎯 ALL AUTH ENDPOINTS - 모든 HTTP 메서드 허용
-                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/auth/**").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/auth/**").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/auth/**").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/auth/**").permitAll()
-                        
-                        // 그 다음 일반적인 패턴들
-                        .requestMatchers(PUBLIC_URLS).permitAll() // 공개 경로는 모두 허용
-                        
-                        // 🎯 비회원도 접근 가능한 작품 조회 API
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/artworks/*").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/artworks/user/*").permitAll()
-                        
-                        .anyRequest().authenticated() // 그 외 모든 요청은 인증 필요
-                )
+                .authorizeHttpRequests(auth -> {
+                    log.info("🔧 Security 규칙 설정 중...");
+                    auth
+                            // 🎯 ALL AUTH ENDPOINTS - 모든 HTTP 메서드 허용
+                            .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/auth/**").permitAll()
+                            .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/auth/**").permitAll()
+                            .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/auth/**").permitAll()
+                            .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/auth/**").permitAll()
+                            
+                            // 그 다음 일반적인 패턴들
+                            .requestMatchers(PUBLIC_URLS).permitAll() // 공개 경로는 모두 허용
+                            
+                            // 🎯 비회원도 접근 가능한 작품 조회 API
+                            .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/artworks/*").permitAll()
+                            .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/artworks/user/*").permitAll()
+                            
+                            .anyRequest().authenticated(); // 그 외 모든 요청은 인증 필요
+                })
 
                 // 6. 커스텀 예외 처리 핸들러 등록
                 .exceptionHandling(exception -> exception
@@ -104,9 +110,11 @@ public class SecurityConfig {
                         .accessDeniedHandler(jwtAccessDeniedHandler))
 
                 // 7. 커스텀 JWT 필터를 UsernamePasswordAuthenticationFilter 앞에 추가
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .build();
 
-        return http.build();
+        log.info("🔧 SecurityFilterChain 설정 완료");
+        return filterChain;
     }
 
     /**

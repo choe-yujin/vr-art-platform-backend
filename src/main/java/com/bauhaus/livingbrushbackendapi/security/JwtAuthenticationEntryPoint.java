@@ -21,8 +21,28 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint { /
     public void commence(HttpServletRequest request,
                          HttpServletResponse response,
                          AuthenticationException authException) throws IOException, ServletException {
+        // 🔍 [DEBUG] 어떤 요청이 인증 실패를 일으키는지 상세 로그
+        String method = request.getMethod();
+        String uri = request.getRequestURI();
+        String queryString = request.getQueryString();
+        String userAgent = request.getHeader("User-Agent");
+        String authHeader = request.getHeader("Authorization");
+        
+        log.warn("🚨 [AUTH FAILURE] {} {} {} - User-Agent: {}", 
+                method, uri, 
+                queryString != null ? "?" + queryString : "",
+                userAgent != null ? userAgent.substring(0, Math.min(50, userAgent.length())) : "없음");
+        
+        if (authHeader != null) {
+            log.warn("🚨 [AUTH FAILURE] Authorization 헤더 존재: {}", 
+                    authHeader.substring(0, Math.min(20, authHeader.length())) + "...");
+        } else {
+            log.warn("🚨 [AUTH FAILURE] Authorization 헤더 없음");
+        }
+        
+        log.warn("🚨 [AUTH FAILURE] 예외 메시지: {}", authException.getMessage());
+        
         // 유효하지 않은 자격증명을 거부하고 401 에러를 보냄
-        log.warn("Responding with unauthorized error. Message - {}", authException.getMessage());
         response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Unauthorized");
     }
 }
