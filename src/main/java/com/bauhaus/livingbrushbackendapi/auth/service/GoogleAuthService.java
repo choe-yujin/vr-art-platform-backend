@@ -107,12 +107,17 @@ public class GoogleAuthService implements OAuthService {
      */
     private GoogleIdToken.Payload verifyAndGetPayload(String idTokenString) {
         try {
+            log.info("🔍 [DEBUG] Google ID Token 검증 시작 - Token 길이: {}", idTokenString.length());
+            log.info("🔍 [DEBUG] Token 앞부분: {}...", idTokenString.substring(0, Math.min(50, idTokenString.length())));
+            
             GoogleIdToken idToken = googleIdTokenVerifier.verify(idTokenString);
             if (idToken == null) {
+                log.warn("❌ GoogleIdTokenVerifier.verify() 결과가 null - Token이 유효하지 않음");
                 throw new CustomException(ErrorCode.INVALID_TOKEN, "Google ID Token 검증에 실패했습니다.");
             }
             
             GoogleIdToken.Payload payload = idToken.getPayload();
+            log.info("✅ Google ID Token 검증 성공 - Subject: {}, Email: {}", payload.getSubject(), payload.getEmail());
             
             // 이메일 권한 확인 (Google OAuth에서 이메일은 필수)
             if (payload.getEmail() == null || payload.getEmail().isEmpty()) {
@@ -123,7 +128,7 @@ public class GoogleAuthService implements OAuthService {
             
             return payload;
         } catch (GeneralSecurityException | IOException e) {
-            log.error("Google ID Token 검증 중 오류 발생: {}", e.getMessage());
+            log.error("Google ID Token 검증 중 오류 발생: {}", e.getMessage(), e);
             throw new CustomException(ErrorCode.AUTHENTICATION_FAILED, "Google 서버와 통신 중 오류가 발생했습니다.");
         }
     }

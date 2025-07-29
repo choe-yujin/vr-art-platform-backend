@@ -48,6 +48,8 @@ public class AppConfig {
     public GoogleIdTokenVerifier googleIdTokenVerifier(
             @Value("${spring.security.oauth2.client.registration.google.client-id}") String googleClientId
     ) {
+        System.out.println("🔧 GoogleIdTokenVerifier 생성 - Client ID: " + googleClientId);
+        
         return new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), new GsonFactory())
                 // Audience는 Client ID 목록입니다.
                 .setAudience(Collections.singletonList(googleClientId))
