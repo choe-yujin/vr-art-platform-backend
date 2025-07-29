@@ -1,5 +1,6 @@
 package com.bauhaus.livingbrushbackendapi.social.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -20,21 +21,25 @@ public class FollowToggleResponse {
     /**
      * 팔로우 상태 (true: 팔로우, false: 언팔로우)
      */
+    @JsonProperty("isFollowing")
     private boolean isFollowing;
 
     /**
      * 대상 사용자의 현재 팔로워 수
      */
+    @JsonProperty("followerCount")
     private int followerCount;
 
     /**
      * 요청 사용자의 현재 팔로잉 수
      */
+    @JsonProperty("followingCount")
     private int followingCount;
 
     /**
      * 응답 메시지
      */
+    @JsonProperty("message")
     private String message;
 
     /**
@@ -45,38 +50,6 @@ public class FollowToggleResponse {
         this.followerCount = followerCount;
         this.followingCount = followingCount;
         this.message = message;
-    }
-
-    /**
-     * 팔로우 응답 생성
-     * 
-     * @param targetUserId 팔로우 대상 사용자 ID
-     * @param targetUserNickname 팔로우 대상 사용자 닉네임
-     * @return 팔로우 응답
-     */
-    public static FollowToggleResponse followed(Long targetUserId, String targetUserNickname) {
-        return new FollowToggleResponse(
-                true,
-                0, // 실제 값은 SocialService에서 설정
-                0, // 실제 값은 SocialService에서 설정
-                String.format("%s님을 팔로우했습니다", targetUserNickname)
-        );
-    }
-
-    /**
-     * 언팔로우 응답 생성
-     * 
-     * @param targetUserId 언팔로우 대상 사용자 ID
-     * @param targetUserNickname 언팔로우 대상 사용자 닉네임
-     * @return 언팔로우 응답
-     */
-    public static FollowToggleResponse unfollowed(Long targetUserId, String targetUserNickname) {
-        return new FollowToggleResponse(
-                false,
-                0, // 실제 값은 SocialService에서 설정
-                0, // 실제 값은 SocialService에서 설정
-                String.format("%s님을 언팔로우했습니다", targetUserNickname)
-        );
     }
 
     /**
@@ -93,20 +66,10 @@ public class FollowToggleResponse {
     }
 
     /**
-     * 팔로우 상태인지 확인
-     * 
-     * @return 팔로우 여부
+     * JSON 필드명을 명시적으로 지정
      */
-    public boolean isFollowed() {
+    @JsonProperty("isFollowing")
+    public boolean isFollowing() {
         return this.isFollowing;
-    }
-
-    /**
-     * 언팔로우 상태인지 확인
-     * 
-     * @return 언팔로우 여부
-     */
-    public boolean isUnfollowed() {
-        return !this.isFollowing;
     }
 }
