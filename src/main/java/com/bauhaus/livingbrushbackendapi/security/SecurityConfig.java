@@ -37,21 +37,13 @@ public class SecurityConfig {
     private final JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint;
     private final JwtAccessDeniedHandler jwtAccessDeniedHandler;
 
-    // [수정] 인증 없이 접근 가능한 경로 목록에 공개 API 경로 추가
+    // [수정] 인증 없이 접근 가능한 경로 목록 - 단순화
     private static final String[] PUBLIC_URLS = {
             // --- Basic and Error ---
             "/", "/error",
 
             // --- Swagger UI v3 ---
             "/swagger-ui/**", "/v3/api-docs/**",
-
-            // --- Authentication (명시적으로 추가) ---
-            "/api/auth/login/google", // Google 로그인
-            "/api/auth/login/meta",   // Meta 로그인
-            "/api/auth/signup/meta",  // Meta 회원가입
-            "/api/auth/refresh",      // 토큰 갱신
-            "/api/auth/health",       // Health check
-            "/api/auth/**", // 기타 인증 관련 모든 경로
 
             // --- Development ---
             "/api/dev/**", // 개발용 테스트 API 경로
@@ -90,10 +82,19 @@ public class SecurityConfig {
 
                 // 5. 요청 경로별 인가 규칙 설정
                 .authorizeHttpRequests(auth -> auth
+                        // 🎯 ALL AUTH ENDPOINTS - 모든 HTTP 메서드 허용
+                        .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/auth/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/auth/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/auth/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/auth/**").permitAll()
+                        
+                        // 그 다음 일반적인 패턴들
                         .requestMatchers(PUBLIC_URLS).permitAll() // 공개 경로는 모두 허용
+                        
                         // 🎯 비회원도 접근 가능한 작품 조회 API
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/artworks/*").permitAll()
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/artworks/user/*").permitAll()
+                        
                         .anyRequest().authenticated() // 그 외 모든 요청은 인증 필요
                 )
 

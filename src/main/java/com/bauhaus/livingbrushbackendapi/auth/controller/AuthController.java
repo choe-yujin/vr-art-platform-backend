@@ -31,6 +31,12 @@ public class AuthController {
     private final VrAuthService vrAuthService; // VR QR 로그인 전용 서비스
     private final JwtTokenProvider jwtTokenProvider; // JWT에서 사용자 ID 추출용
 
+    // @PostConstruct로 초기화 로그 출력
+    @jakarta.annotation.PostConstruct
+    public void init() {
+        log.info("🔧 AuthController 초기화 완료");
+    }
+
     @PostMapping("/signup/meta")
     @Operation(summary = "Meta VR 회원가입", description = "Meta Access Token과 동의 정보로 회원가입합니다.")
     @ApiResponses({
@@ -113,8 +119,19 @@ public class AuthController {
     @Operation(summary = "서버 상태 확인", description = "API 서버의 현재 동작 상태를 확인합니다.")
     @ApiResponse(responseCode = "200", description = "서버 정상 동작 중")
     public ResponseEntity<String> health() {
+        log.info("🏥 Health check 요청");
         // 어떤 서비스도 호출하지 않고, 즉시 "OK"를 반환하여 외부 의존성을 제거합니다.
         return ResponseEntity.ok("OK");
+    }
+
+    /**
+     * 디버깅용 테스트 엔드포인트
+     */
+    @GetMapping("/test")
+    @Operation(summary = "테스트 엔드포인트", description = "AuthController 도달 테스트")
+    public ResponseEntity<String> test() {
+        log.info("🧪 Test 엔드포인트 호출됨");
+        return ResponseEntity.ok("AuthController reached successfully!");
     }
 
     @PostMapping("/vr-login-manual")
