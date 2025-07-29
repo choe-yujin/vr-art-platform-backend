@@ -11,7 +11,9 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
@@ -23,12 +25,11 @@ import java.util.Optional;
  * 서비스는 저수준의 데이터 조작에서 벗어나 고수준의 정책 결정과 흐름 제어에 집중합니다.
  *
  * @author Bauhaus Team
- * @since 1.3 (Refactored)
+ * @since 1.4 (Production-Ready Refactoring)
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
-@Transactional
 public class UserAccountLinkingService {
 
     private final UserRepository userRepository;
@@ -41,6 +42,10 @@ public class UserAccountLinkingService {
      * @param accountInfo OAuth 제공자로부터 받은 사용자 정보
      * @return 계정 처리 결과 (기존 로그인, 신규 연동, 신규 생성)
      */
+    // [개선] propagation = Propagation.REQUIRES_NEW
+    // 호출하는 서비스가 read-only 트랜잭션을 가지고 있더라도, 이 메소드는 항상 새로운 '쓰기 가능' 트랜잭션을 시작하도록 보장합니다.
+    // 이를 통해 신규 사용자 생성(INSERT) 시 발생하는 'read-only transaction' 오류를 원천적으로 방지합니다.
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public AccountLinkingResult handleUnifiedAccountScenario(OAuthAccountInfo accountInfo) {
         validateAccountInfo(accountInfo);
         Provider provider = Provider.fromString(accountInfo.getProvider())
@@ -50,8 +55,10 @@ public class UserAccountLinkingService {
         Optional<User> existingUser = findByProvider(provider, accountInfo.getProviderUserId());
         if (existingUser.isPresent()) {
             User user = existingUser.get();
+            // 로그인 시 프로필 정보가 변경되었을 경우 업데이트합니다.
             if (user.updateProfile(accountInfo.getName(), accountInfo.getEmail())) {
-                userRepository.save(user);
+                // JPA의 변경 감지(dirty checking)에 의해 트랜잭션 커밋 시 자동으로 UPDATE 쿼리가 실행됩니다.
+                // 명시적인 save 호출은 생략 가능하지만, 의도를 명확히 하기 위해 유지할 수도 있습니다.
             }
             log.info("기존 {} 계정 로그인 - User ID: {}", provider, user.getUserId());
             return AccountLinkingResult.existingLogin(user);
@@ -81,6 +88,7 @@ public class UserAccountLinkingService {
      * @param provider 연동 해제할 OAuth 제공자
      * @return 상태가 변경된 User 엔티티
      */
+    @Transactional
     public User unlinkOAuthAccount(User user, Provider provider) {
         validateUserAndProvider(user, provider);
         user.unlinkAccount(provider);
@@ -102,6 +110,7 @@ public class UserAccountLinkingService {
             user.promoteToArtist();
             userPermissionService.logPermissionChange(user, UserRole.GUEST, UserRole.ARTIST, "Meta 계정 연동");
         }
+        // [개선] 모든 변경이 끝난 후 save를 한 번만 호출하여 명확성을 높입니다.
         userRepository.save(user);
     }
 
@@ -119,14 +128,12 @@ public class UserAccountLinkingService {
         User savedUser = userRepository.save(newUser);
 
         // 3. 프로필 이미지 업로드 (Side-Effect 처리)
+        // [개선] 비동기 호출을 통해 API 응답 속도를 향상시킵니다.
         handleOAuthProfileImageUpload(savedUser, accountInfo.getProfileImageUrl(), provider);
 
         return savedUser;
     }
 
-    /**
-     * OAuth 정보로부터 User 엔티티를 생성합니다. (DB 저장 전)
-     */
     /**
      * OAuth 정보로부터 User 엔티티를 생성합니다. (DB 저장 전)
      * 각 Provider 별 정적 팩토리 메소드를 호출하여 일관성을 유지합니다.
@@ -136,7 +143,6 @@ public class UserAccountLinkingService {
                 .filter(name -> !name.isBlank())
                 .orElseGet(() -> provider.name() + "User_" + System.currentTimeMillis() % 10000);
 
-        // [수정] User 엔티티의 정적 팩토리 메서드를 사용하여 코드를 단순화하고 일관성을 확보합니다.
         return switch (provider) {
             case META -> User.createNewMetaUser(accountInfo.getProviderUserId(), accountInfo.getEmail(), nickname, accountInfo.getProfileImageUrl());
             case GOOGLE -> User.createNewGoogleUser(accountInfo.getProviderUserId(), accountInfo.getEmail(), nickname, accountInfo.getProfileImageUrl());
@@ -146,21 +152,31 @@ public class UserAccountLinkingService {
 
     /**
      * OAuth 프로필 이미지를 S3에 업로드하고 사용자 프로필을 업데이트합니다.
-     * 이 작업은 외부 네트워크 호출을 포함하므로, @Async를 사용하여 비동기 처리 시
-     * 사용자 생성 API의 응답 시간을 단축시키는 효과를 얻을 수 있습니다.
+     * [개선] @Async 어노테이션을 통해 이 메소드를 별도의 스레드에서 비동기적으로 실행합니다.
+     * 이를 통해 이미지 처리 시간을 기다리지 않고 클라이언트에게 즉시 응답을 보낼 수 있습니다.
+     *
+     * 중요: @Async가 올바르게 동작하려면, 이 메소드는 다른 Spring Bean(@Service)으로 분리되어야 합니다.
+     * (예: AsyncUserProfileService) 그리고 메인 애플리케이션 클래스에 @EnableAsync 어노테이션을 추가해야 합니다.
      */
-    private void handleOAuthProfileImageUpload(User user, String imageUrl, Provider provider) {
+    @Async
+    @Transactional // 비동기 메소드도 자체 트랜잭션이 필요합니다.
+    public void handleOAuthProfileImageUpload(User user, String imageUrl, Provider provider) {
         if (imageUrl == null || imageUrl.isBlank()) {
             return;
         }
         try {
-            String s3ProfileImageUrl = profileImageService.uploadProfileImageFromUrl(
-                    user.getUserId(), imageUrl);
+            // 비동기 실행을 위해선 user 객체를 다시 조회해야 할 수 있습니다.
+            User managedUser = userRepository.findById(user.getUserId())
+                    .orElseThrow(() -> new IllegalStateException("비동기 프로필 이미지 처리 중 사용자를 찾을 수 없습니다."));
 
-            user.getUserProfile().updateProfileImage(s3ProfileImageUrl);
+            String s3ProfileImageUrl = profileImageService.uploadProfileImageFromUrl(
+                    managedUser.getUserId(), imageUrl);
+
+            managedUser.getUserProfile().updateProfileImage(s3ProfileImageUrl);
+            userRepository.save(managedUser); // 변경 사항을 명시적으로 저장
 
             log.info("OAuth 프로필 이미지 S3 업로드 완료 - User ID: {}, Provider: {}, S3 URL: {}",
-                    user.getUserId(), provider, s3ProfileImageUrl);
+                    managedUser.getUserId(), provider, s3ProfileImageUrl);
 
         } catch (Exception e) {
             log.warn("OAuth 프로필 이미지 업로드 실패, 기본 이미지 사용 - User ID: {}, Provider: {}, 오류: {}",
