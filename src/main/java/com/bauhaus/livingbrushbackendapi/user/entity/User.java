@@ -173,6 +173,17 @@ public class User extends BaseEntity {
                 .build();
     }
 
+    public static User createNewFacebookUser(String providerId, String email, String name, String oauthProfileImageUrl) {
+        return User.builder()
+                .nickname(name)
+                .email(email)
+                .primaryProvider(Provider.FACEBOOK)
+                .providerId(providerId)
+                .role(UserRole.USER) // 혹은 다른 기본 역할
+                .oauthProfileImageUrl(oauthProfileImageUrl)
+                .build();
+    }
+
     public void promoteToArtist() {
         if (this.role.getLevel() < UserRole.ARTIST.getLevel()) {
             this.role = UserRole.ARTIST;
