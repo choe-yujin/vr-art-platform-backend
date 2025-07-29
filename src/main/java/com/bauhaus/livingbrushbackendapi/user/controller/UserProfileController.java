@@ -194,4 +194,6 @@ public class UserProfileController {
         log.info("내 통계 조회 완료 - 사용자 ID: {}", userId);
         return ResponseEntity.ok(stats);
     }
+
+
 }

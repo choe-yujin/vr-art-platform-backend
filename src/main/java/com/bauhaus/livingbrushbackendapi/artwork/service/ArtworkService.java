@@ -22,6 +22,7 @@ import com.bauhaus.livingbrushbackendapi.tag.entity.Tag;
 import com.bauhaus.livingbrushbackendapi.tag.repository.TagRepository;
 import com.bauhaus.livingbrushbackendapi.user.entity.User;
 import com.bauhaus.livingbrushbackendapi.user.entity.UserProfile;
+import com.bauhaus.livingbrushbackendapi.user.entity.enumeration.UserRole;
 import com.bauhaus.livingbrushbackendapi.user.repository.UserRepository;
 import com.bauhaus.livingbrushbackendapi.user.repository.UserProfileRepository;
 import com.bauhaus.livingbrushbackendapi.qrcode.repository.QrCodeRepository;
@@ -125,12 +126,15 @@ public class ArtworkService {
             // 7. 작품에 실제 GLB URL 업데이트
             savedArtwork.updateGlbUrl(glbUrl);
 
-            // 8. 썸네일 미디어 설정 및 연결 (제공된 경우)
+            // 8. 🎯 첫 업로드 시 자동 승격 로직 (USER → ARTIST)
+            handleAutoPromotionIfFirstArtwork(user, finalTitle);
+
+            // 9. 썸네일 미디어 설정 및 연결 (제공된 경우)
             if (vrRequest.hasThumbnail()) {
                 setThumbnailMediaAndLink(savedArtwork, vrRequest.getThumbnailMediaId(), userId);
             }
 
-            // 9. 태그 저장 (선택된 경우)
+            // 10. 태그 저장 (선택된 경우)
             if (vrRequest.hasSelectedTags()) {
                 saveArtworkTags(savedArtwork, vrRequest.getTagIds());
             }
@@ -187,15 +191,18 @@ public class ArtworkService {
                 glbFile.getBytes(), uniqueFileName, context);
             log.info("GLB 파일 업로드 완료: {}", glbUrl);
 
-            // 6. 작품에 실제 GLB URL 업데이트
+            // 7. 작품에 실제 GLB URL 업데이트
             savedArtwork.updateGlbUrl(glbUrl);
 
-            // 7. 썸네일 미디어 설정 (제공된 경우)
+            // 8. 🎯 첫 업로드 시 자동 승격 로직 (USER → ARTIST)
+            handleAutoPromotionIfFirstArtwork(user, request.getTitle());
+
+            // 9. 썸네일 미디어 설정 (제공된 경우)
             if (request.getThumbnailMediaId() != null) {
                 setThumbnailMediaAndLink(savedArtwork, request.getThumbnailMediaId(), userId);
             }
 
-            // 8. 태그 저장 (제공된 경우)
+            // 10. 태그 저장 (제공된 경우)
             if (request.getTagIds() != null && !request.getTagIds().isEmpty()) {
                 saveArtworkTags(savedArtwork, request.getTagIds());
             }
@@ -243,17 +250,15 @@ public class ArtworkService {
             Artwork savedArtwork = artworkRepository.save(artwork);
             log.info("작품 저장 완료 - ID: {}", savedArtwork.getArtworkId());
 
-            // 5. 썸네일 미디어 설정 (제공된 경우)
+            // 5. 🎯 첫 업로드 시 자동 승격 로직 (USER → ARTIST)
+            handleAutoPromotionIfFirstArtwork(user, request.getTitle());
+
+            // 6. 썸네일 미디어 설정 (제공된 경우)
             if (request.getThumbnailMediaId() != null) {
                 setThumbnailMediaAndLink(savedArtwork, request.getThumbnailMediaId(), userId);
             }
 
-            // 6. 태그 저장 (제공된 경우)
-            if (request.getTagIds() != null && !request.getTagIds().isEmpty()) {
-                saveArtworkTags(savedArtwork, request.getTagIds());
-            }
-
-            // 6. 태그 저장 (제공된 경우)
+            // 7. 태그 저장 (제공된 경우)
             if (request.getTagIds() != null && !request.getTagIds().isEmpty()) {
                 saveArtworkTags(savedArtwork, request.getTagIds());
             }
@@ -728,6 +733,58 @@ public class ArtworkService {
     // ====================================================================
     // ✨ Private 헬퍼 메서드들
     // ====================================================================
+
+    /**
+     * 🎯 첫 작품 업로드 시 자동 승격 처리
+     * USER 권한 사용자가 첫 작품을 업로드하면 자동으로 ARTIST로 승격됩니다.
+     * 
+     * @param user 대상 사용자
+     * @param artworkTitle 업로드된 작품 제목 (로깅용)
+     */
+    private void handleAutoPromotionIfFirstArtwork(User user, String artworkTitle) {
+        try {
+            // 1. USER 권한인지 확인
+            if (user.getRole() != UserRole.USER) {
+                log.debug("사용자 권한이 USER가 아니므로 승격 로직 생략 - userId: {}, 현재 권한: {}", 
+                         user.getUserId(), user.getRole());
+                return;
+            }
+
+            // 2. 첫 번째 작품인지 확인
+            if (!isFirstArtwork(user.getUserId())) {
+                log.debug("첫 번째 작품이 아니므로 승격 로직 생략 - userId: {}", user.getUserId());
+                return;
+            }
+
+            // 3. 자동 승격 실행
+            log.info("🚀 자동 승격 시작 - userId: {}, 권한: {} → ARTIST, 첫 작품: '{}'", 
+                     user.getUserId(), user.getRole(), artworkTitle);
+
+            user.promoteToArtist(); // JPA 변경감지로 자동 저장
+
+            log.info("🎉 자동 승격 완료! - userId: {}, 첫 작품: '{}', 승격 시간: {}", 
+                     user.getUserId(), artworkTitle, user.getArtistQualifiedAt());
+
+        } catch (Exception e) {
+            // 승격 실패가 작품 업로드를 막지 않도록 예외를 로깅만 하고 계속 진행
+            log.error("❌ 자동 승격 실패 (작품 업로드는 계속 진행) - userId: {}, 작품: '{}', 오류: {}", 
+                      user.getUserId(), artworkTitle, e.getMessage(), e);
+        }
+    }
+
+    /**
+     * 🎯 첫 작품 업로드 여부 확인 (자동 승격용)
+     * 해당 사용자의 작품이 현재 저장된 작품이 첫 번째인지 확인합니다.
+     * 
+     * @param userId 사용자 ID
+     * @return 첫 번째 작품이면 true, 아니면 false
+     */
+    private boolean isFirstArtwork(Long userId) {
+        long artworkCount = artworkRepository.countByUser_UserId(userId);
+        boolean isFirst = artworkCount == 1;
+        log.debug("사용자 {} 작품 개수: {}, 첫 작품 여부: {}", userId, artworkCount, isFirst);
+        return isFirst;
+    }
 
     /**
      * 썸네일 미디어 설정 및 작품 연결 (VR 업로드용)

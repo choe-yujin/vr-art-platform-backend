@@ -176,7 +176,6 @@ public class UserProfileService {
     /**
      * 기본 UserProfile 생성
      */
-    @Transactional
     private UserProfile createDefaultProfile(User user) {
         UserProfile newProfile = new UserProfile(user, null);
         return userProfileRepository.save(newProfile);
@@ -462,10 +461,8 @@ public class UserProfileService {
         return 0;
     }
 
-    // ========== 관리자용 통계 ==========
-
     /**
-     * 소개 공개 설정된 프로필 수 조회
+     * 관리자용 통계
      */
     public long countPublicBioProfiles() {
         return userProfileRepository.countPublicBioProfiles();
@@ -484,4 +481,6 @@ public class UserProfileService {
     public boolean existsProfile(Long userId) {
         return userProfileRepository.existsByUserId(userId);
     }
+
+
 }
