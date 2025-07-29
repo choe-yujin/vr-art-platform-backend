@@ -238,15 +238,43 @@ public class SocialService {
                 throw new CustomException(ErrorCode.NOT_FOLLOWING);
             }
             
+            // TODO: UserProfile 팔로워/팔로잉 수 업데이트
+            // userProfileService.decrementFollowerCount(followingId);
+            // userProfileService.decrementFollowingCount(followerId);
+            
             log.info("언팔로우 완료: followerId={}, followingId={}", followerId, followingId);
-            return FollowToggleResponse.unfollowed(followingId, following.getNickname());
+            
+            // 실시간 팔로워 수 조회해서 응답
+            int currentFollowerCount = followRepository.countFollowersByFollowingId(followingId);
+            int currentFollowingCount = followRepository.countFollowingsByFollowerId(followerId);
+            
+            return FollowToggleResponse.of(
+                    false, 
+                    currentFollowerCount, 
+                    currentFollowingCount, 
+                    following.getNickname() + "님을 언팔로우했습니다"
+            );
         } else {
             // 팔로우
             Follow follow = new Follow(followerId, followingId);
             followRepository.save(follow);
             
+            // TODO: UserProfile 팔로워/팔로잉 수 업데이트
+            // userProfileService.incrementFollowerCount(followingId);
+            // userProfileService.incrementFollowingCount(followerId);
+            
             log.info("팔로우 완료: followerId={}, followingId={}", followerId, followingId);
-            return FollowToggleResponse.followed(followingId, following.getNickname());
+            
+            // 실시간 팔로워 수 조회해서 응답
+            int currentFollowerCount = followRepository.countFollowersByFollowingId(followingId);
+            int currentFollowingCount = followRepository.countFollowingsByFollowerId(followerId);
+            
+            return FollowToggleResponse.of(
+                    true, 
+                    currentFollowerCount, 
+                    currentFollowingCount, 
+                    following.getNickname() + "님을 팔로우했습니다"
+            );
         }
     }
 
