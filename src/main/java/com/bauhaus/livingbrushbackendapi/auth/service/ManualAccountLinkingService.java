@@ -262,7 +262,8 @@ public class ManualAccountLinkingService {
             refreshToken,
             user.getUserId(),
             user.getNickname(),
-            user.getRole()
+            user.getRole(),
+            false // 기존 계정 연동이므로 신규 가입이 아님
         );
     }
     
@@ -281,7 +282,8 @@ public class ManualAccountLinkingService {
         String refreshToken,
         Long userId,
         String nickname,
-        UserRole role
+        UserRole role,
+        boolean isNewUser // 새로운 필드 추가
     ) {}
     
     /**

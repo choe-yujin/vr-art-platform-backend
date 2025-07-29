@@ -47,12 +47,13 @@ public class DevAuthController {
         );
         String refreshToken = jwtTokenProvider.createRefreshToken(testUser.getUserId());
 
-        // 3. [수정] AuthResponse 생성자에 boolean 타입 대신 UserRole 타입을 전달합니다.
+        // 3. AuthResponse 생성 (개발자 테스트용이므로 isNewUser = false)
         AuthResponse authResponse = new AuthResponse(
                 accessToken,
                 refreshToken,
                 testUser.getUserId(),
-                testUser.getRole() // isNewUser (boolean) -> testUser.getRole() (UserRole)
+                testUser.getRole(),
+                false // 개발자 테스트용 토큰은 신규 가입이 아님
         );
 
         return ResponseEntity.ok(authResponse);

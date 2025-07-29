@@ -15,7 +15,10 @@ public record AuthResponse(
         Long userId,
 
         @Schema(description = "사용자 권한", example = "ARTIST")
-        UserRole role
+        UserRole role,
+
+        @Schema(description = "신규 가입 여부 - true: 방금 회원가입한 새 사용자, false: 기존 회원", example = "true")
+        boolean isNewUser
 ) {
-        // record는 자동으로 accessToken(), refreshToken(), userId(), role() 메소드를 생성합니다.
+        // record는 자동으로 accessToken(), refreshToken(), userId(), role(), isNewUser() 메소드를 생성합니다.
 }

@@ -54,6 +54,6 @@ public class AuthServiceImpl implements AuthService {
         String newAccessToken = jwtTokenProvider.createAccessToken(user.getUserId(), user.getRole());
         log.info("새로운 Access Token 발급 완료. User ID: {}", userId);
 
-        return new AuthResponse(newAccessToken, refreshToken, user.getUserId(), user.getRole());
+        return new AuthResponse(newAccessToken, refreshToken, user.getUserId(), user.getRole(), false);
     }
 }

@@ -132,13 +132,16 @@ public class MetaOAuthService implements OAuthService {
             user.promoteToArtist();
         }
 
-        // 5. JWT 토큰 생성
+        // 5. 신규 사용자 여부 판단
+        boolean isNewUser = (result.getType() == UserAccountLinkingService.AccountLinkingType.NEW_USER_CREATED);
+
+        // 6. JWT 토큰 생성
         String accessToken = jwtTokenProvider.createAccessToken(user.getUserId(), user.getRole());
         String refreshToken = jwtTokenProvider.createRefreshToken(user.getUserId());
 
         String authType = consents != null ? "회원가입" : "로그인";
-        log.info("Meta {} 성공 - User ID: {}, 처리 타입: {}", authType, user.getUserId(), result.getType());
-        return new AuthResponse(accessToken, refreshToken, user.getUserId(), user.getRole());
+        log.info("Meta {} 성공 - User ID: {}, 처리 타입: {}, 신규 사용자: {}", authType, user.getUserId(), result.getType(), isNewUser);
+        return new AuthResponse(accessToken, refreshToken, user.getUserId(), user.getRole(), isNewUser);
     }
 
     /**

@@ -53,6 +53,6 @@ public class JwtTokenService {
         log.info("새로운 Access Token 발급 완료 - User ID: {}", userId);
 
         // 정책: 리프레시 토큰은 재발급하지 않고, 기존 토큰을 그대로 반환합니다.
-        return new AuthResponse(newAccessToken, refreshToken, user.getUserId(), user.getRole());
+        return new AuthResponse(newAccessToken, refreshToken, user.getUserId(), user.getRole(), false);
     }
 }

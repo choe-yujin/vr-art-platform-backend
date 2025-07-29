@@ -151,7 +151,7 @@ public class AccountPairingService {
         log.info("✅ 페어링 완료 - AR 사용자: {}, Meta 사용자: {}, 권한: {} → {}", 
                 arUser.getUserId(), request.getMetaUserId(), previousRole, arUser.getRole());
 
-        return new AuthResponse(accessToken, refreshToken, arUser.getUserId(), arUser.getRole());
+        return new AuthResponse(accessToken, refreshToken, arUser.getUserId(), arUser.getRole(), false);
     }
 
     /**

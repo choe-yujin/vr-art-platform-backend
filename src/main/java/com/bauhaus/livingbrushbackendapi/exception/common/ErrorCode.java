@@ -23,7 +23,8 @@ public enum ErrorCode {
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "A006", "접근 권한이 없습니다."),
     MISSING_CLAIMS(HttpStatus.BAD_REQUEST, "A007", "토큰에 필수 정보(클레임)가 없습니다."),
     AUTHENTICATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "A008", "외부 인증 서버와 통신에 실패했습니다."),
-    OAUTH_PROVIDER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "A009", "OAuth 제공자로부터 유효하지 않은 응답을 받았습니다."), // <<-- 이 줄을 추가해주세요.
+    OAUTH_PROVIDER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "A009", "OAuth 제공자로부터 유효하지 않은 응답을 받았습니다."),
+    EMAIL_PERMISSION_REQUIRED(HttpStatus.BAD_REQUEST, "A010", "Google 로그인을 위해 이메일 권한이 필요합니다."),
 
     // ========== 사용자 (User) ==========
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "U001", "해당 사용자를 찾을 수 없습니다."),
