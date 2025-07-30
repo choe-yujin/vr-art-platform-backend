@@ -61,10 +61,15 @@ public class CommentResponse {
     private LocalDateTime updatedAt;
 
     /**
+     * 내가 작성한 댓글인지 여부 (로그인 사용자만 해당)
+     */
+    private Boolean isMine;
+
+    /**
      * 생성자
      */
     private CommentResponse(Long commentId, Long artworkId, Long userId, String userNickname,
-                           String content, boolean isDeleted, LocalDateTime createdAt, LocalDateTime updatedAt) {
+                           String content, boolean isDeleted, LocalDateTime createdAt, LocalDateTime updatedAt, Boolean isMine) {
         this.commentId = commentId;
         this.artworkId = artworkId;
         this.userId = userId;
@@ -73,10 +78,11 @@ public class CommentResponse {
         this.isDeleted = isDeleted;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.isMine = isMine;
     }
 
     /**
-     * Comment 엔티티로부터 응답 DTO 생성
+     * Comment 엔티티로부터 응답 DTO 생성 (게스트 사용자용)
      * 
      * @param comment 댓글 엔티티
      * @param userNickname 작성자 닉네임
@@ -91,7 +97,32 @@ public class CommentResponse {
                 comment.getDisplayContent(), // 삭제된 댓글인 경우 "삭제된 댓글입니다" 반환
                 comment.isDeleted(),
                 comment.getCreatedAt(),
-                comment.getUpdatedAt()
+                comment.getUpdatedAt(),
+                null // 게스트는 null
+        );
+    }
+
+    /**
+     * Comment 엔티티로부터 응답 DTO 생성 (로그인 사용자용)
+     * 
+     * @param comment 댓글 엔티티
+     * @param userNickname 작성자 닉네임
+     * @param currentUserId 현재 로그인한 사용자 ID
+     * @return 댓글 응답 DTO
+     */
+    public static CommentResponse from(Comment comment, String userNickname, Long currentUserId) {
+        boolean isMine = currentUserId != null && comment.getUserId().equals(currentUserId);
+        
+        return new CommentResponse(
+                comment.getCommentId(),
+                comment.getArtworkId(),
+                comment.getUserId(),
+                userNickname,
+                comment.getDisplayContent(), // 삭제된 댓글인 경우 "삭제된 댓글입니다" 반환
+                comment.isDeleted(),
+                comment.getCreatedAt(),
+                comment.getUpdatedAt(),
+                isMine
         );
     }
 

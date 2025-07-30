@@ -126,6 +126,16 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
     @Query("SELECT COUNT(c) > 0 FROM Comment c WHERE c.commentId = :commentId AND c.userId = :userId AND c.isDeleted = false")
     boolean existsByCommentIdAndUserIdAndIsDeletedFalse(@Param("commentId") Long commentId, @Param("userId") Long userId);
 
+    /**
+     * 특정 사용자가 특정 작품에 댓글을 남겼는지 확인
+     * 
+     * @param userId 사용자 ID
+     * @param artworkId 작품 ID
+     * @return 댓글 존재 여부
+     */
+    @Query("SELECT COUNT(c) > 0 FROM Comment c WHERE c.userId = :userId AND c.artworkId = :artworkId AND c.isDeleted = false")
+    boolean existsByUserIdAndArtworkIdAndIsDeletedFalse(@Param("userId") Long userId, @Param("artworkId") Long artworkId);
+
     // ========== 최근 활동 조회 ==========
 
     /**

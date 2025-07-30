@@ -52,7 +52,7 @@ public class ArtworkListResponse {
     private ArtworkListResponse(Long artworkId, Long userId, String userNickname, String profileUrl, String title, String thumbnailUrl,
                                VisibilityType visibility, BigDecimal priceCash, int favoriteCount, int viewCount, int commentCount,
                                LocalDateTime createdAt, boolean isPublic, boolean isPaid, boolean hasThumbnail,
-                               Boolean isLiked, Boolean isBookmarked) {
+                               Boolean isLiked, Boolean isBookmarked, Boolean hasMyComment) {
         this.artworkId = artworkId;
         this.userId = userId;
         this.userNickname = userNickname;
@@ -70,6 +70,7 @@ public class ArtworkListResponse {
         this.hasThumbnail = hasThumbnail;
         this.isLiked = isLiked;
         this.isBookmarked = isBookmarked;
+        this.hasMyComment = hasMyComment;
     }
 
     /**
@@ -95,6 +96,7 @@ public class ArtworkListResponse {
                 .hasThumbnail(artwork.hasThumbnail())
                 .isLiked(null)       // 게스트는 null
                 .isBookmarked(null)  // 게스트는 null
+                .hasMyComment(null)  // 게스트는 null
                 .build();
     }
     
@@ -107,9 +109,9 @@ public class ArtworkListResponse {
     
     /**
      * Artwork 엔티티로부터 DTO 생성 (로그인 사용자용)
-     * 현재 사용자의 좋아요/즐겨찾기 상태를 포함합니다.
+     * 현재 사용자의 좋아요/즐겨찾기/댓글 상태를 포함합니다.
      */
-    public static ArtworkListResponse from(Artwork artwork, Long currentUserId, boolean isLiked, boolean isBookmarked, int commentCount) {
+    public static ArtworkListResponse from(Artwork artwork, Long currentUserId, boolean isLiked, boolean isBookmarked, boolean hasMyComment, int commentCount) {
         return ArtworkListResponse.builder()
                 .artworkId(artwork.getArtworkId())
                 .userId(artwork.getUser().getUserId())
@@ -128,14 +130,15 @@ public class ArtworkListResponse {
                 .hasThumbnail(artwork.hasThumbnail())
                 .isLiked(isLiked)           // 실제 좋아요 상태
                 .isBookmarked(isBookmarked) // 실제 즐겨찾기 상태
+                .hasMyComment(hasMyComment) // 실제 댓글 작성 여부
                 .build();
     }
     
     /**
-     * 하위 호환성을 위한 메서드 (commentCount = 0)
+     * 하위 호환성을 위한 메서드 (hasMyComment = false, commentCount = 0)
      */
     public static ArtworkListResponse from(Artwork artwork, Long currentUserId, boolean isLiked, boolean isBookmarked) {
-        return from(artwork, currentUserId, isLiked, isBookmarked, 0); // 기본값 0으로 설정
+        return from(artwork, currentUserId, isLiked, isBookmarked, false, 0); // 기본값 false, 0으로 설정
     }
 
     /**
@@ -149,22 +152,26 @@ public class ArtworkListResponse {
     
     /**
      * Artwork 엔티티 리스트를 DTO 리스트로 변환 (로그인 사용자용)
-     * 각 작품에 대한 사용자의 좋아요/즐겨찾기 상태를 포함합니다.
+     * 각 작품에 대한 사용자의 좋아요/즐겨찾기/댓글 상태를 포함합니다.
      * 
      * @param artworkList 작품 리스트
      * @param currentUserId 현재 로그인한 사용자 ID
      * @param likedArtworkIds 사용자가 좋아요한 작품 ID 집합
      * @param bookmarkedArtworkIds 사용자가 즐겨찾기한 작품 ID 집합
+     * @param commentedArtworkIds 사용자가 댓글을 남긴 작품 ID 집합
      */
     public static List<ArtworkListResponse> fromList(List<Artwork> artworkList, Long currentUserId, 
                                                     java.util.Set<Long> likedArtworkIds, 
-                                                    java.util.Set<Long> bookmarkedArtworkIds) {
+                                                    java.util.Set<Long> bookmarkedArtworkIds,
+                                                    java.util.Set<Long> commentedArtworkIds) {
         return artworkList.stream()
                 .map(artwork -> ArtworkListResponse.from(
                     artwork, 
                     currentUserId,
                     likedArtworkIds.contains(artwork.getArtworkId()),
-                    bookmarkedArtworkIds.contains(artwork.getArtworkId())
+                    bookmarkedArtworkIds.contains(artwork.getArtworkId()),
+                    commentedArtworkIds.contains(artwork.getArtworkId()),
+                    0 // TODO: 실제 댓글 수 조회
                 ))
                 .collect(Collectors.toList());
     }

@@ -128,11 +128,19 @@ public class SocialService {
     }
 
     /**
-     * 특정 작품의 댓글 목록 조회 (페이징)
+     * 특정 작품의 댓글 목록 조회 (페이징) - 게스트용
      */
     public CommentListResponse getComments(Long artworkId, Pageable pageable) {
-        log.info("댓글 목록 조회: artworkId={}, page={}, size={}",
-                artworkId, pageable.getPageNumber(), pageable.getPageSize());
+        return getComments(artworkId, pageable, null); // 게스트로 처리
+    }
+
+    /**
+     * 특정 작품의 댓글 목록 조회 (페이징) - 로그인 사용자 지원
+     */
+    public CommentListResponse getComments(Long artworkId, Pageable pageable, Long currentUserId) {
+        log.info("댓글 목록 조회: artworkId={}, page={}, size={}, currentUserId={}",
+                artworkId, pageable.getPageNumber(), pageable.getPageSize(), 
+                currentUserId != null ? currentUserId : "게스트");
 
         validateArtworkExists(artworkId);
 
@@ -140,8 +148,13 @@ public class SocialService {
 
         List<CommentResponse> comments = commentPage.getContent().stream()
                 .map(comment -> {
-                    // [수정] CommentResponse 생성자에 필요한 인자만 전달합니다.
-                    return CommentResponse.from(comment, comment.getUser().getNickname());
+                    if (currentUserId != null) {
+                        // 로그인 사용자: isMine 정보 포함
+                        return CommentResponse.from(comment, comment.getUser().getNickname(), currentUserId);
+                    } else {
+                        // 게스트: isMine = null
+                        return CommentResponse.from(comment, comment.getUser().getNickname());
+                    }
                 })
                 .collect(Collectors.toList());
 

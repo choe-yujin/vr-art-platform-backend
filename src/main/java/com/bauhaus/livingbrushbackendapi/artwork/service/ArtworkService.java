@@ -28,6 +28,7 @@ import com.bauhaus.livingbrushbackendapi.user.repository.UserProfileRepository;
 import com.bauhaus.livingbrushbackendapi.qrcode.repository.QrCodeRepository;
 import com.bauhaus.livingbrushbackendapi.qrcode.entity.QrCode;
 import com.bauhaus.livingbrushbackendapi.social.repository.LikeRepository;
+import com.bauhaus.livingbrushbackendapi.social.repository.CommentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -73,6 +74,7 @@ public class ArtworkService {
     private final UserProfileRepository userProfileRepository;
     // 🎯 소셜 기능을 위한 Repository 추가
     private final LikeRepository likeRepository;
+    private final CommentRepository commentRepository;
 
     // ====================================================================
     // ✨ 작품 생성 로직 (시나리오 지원)
@@ -568,15 +570,17 @@ public class ArtworkService {
             return artworks.map(ArtworkListResponse::from);
         }
 
-        // 로그인 사용자인 경우 - 실제 좋아요/즐겨찾기 상태 조회
+        // 로그인 사용자인 경우 - 실제 좋아요/즐겨찾기/댓글 상태 조회
         java.util.Set<Long> likedArtworkIds = getLikedArtworkIds(requestUserId, artworks.getContent());
         java.util.Set<Long> bookmarkedArtworkIds = getBookmarkedArtworkIds(requestUserId, artworks.getContent());
+        java.util.Set<Long> commentedArtworkIds = getCommentedArtworkIds(requestUserId, artworks.getContent());
 
         return artworks.map(artwork -> ArtworkListResponse.from(
             artwork, 
             requestUserId, 
             likedArtworkIds.contains(artwork.getArtworkId()),
             bookmarkedArtworkIds.contains(artwork.getArtworkId()),
+            commentedArtworkIds.contains(artwork.getArtworkId()),
             0 // 임시로 댓글 수 0으로 설정
         ));
     }
@@ -613,15 +617,17 @@ public class ArtworkService {
             return artworks.map(ArtworkListResponse::from);
         }
 
-            // 로그인 사용자인 경우 - 실제 좋아요/즐겨찾기 상태 조회
+            // 로그인 사용자인 경우 - 실제 좋아요/즐겨찾기/댓글 상태 조회
         java.util.Set<Long> likedArtworkIds = getLikedArtworkIds(requestUserId, artworks.getContent());
         java.util.Set<Long> bookmarkedArtworkIds = getBookmarkedArtworkIds(requestUserId, artworks.getContent());
+        java.util.Set<Long> commentedArtworkIds = getCommentedArtworkIds(requestUserId, artworks.getContent());
 
         return artworks.map(artwork -> ArtworkListResponse.from(
             artwork, 
             requestUserId, 
             likedArtworkIds.contains(artwork.getArtworkId()),
             bookmarkedArtworkIds.contains(artwork.getArtworkId()),
+            commentedArtworkIds.contains(artwork.getArtworkId()),
             0 // 임시로 댓글 수 0으로 설정
         ));
     }
@@ -999,5 +1005,29 @@ public class ArtworkService {
         // TODO: 즐겨찾기 Repository가 구현되면 실제 조회 로직 추가
         // 현재는 빈 Set 반환 (모든 즐겨찾기 상태가 false)
         return java.util.Set.of();
+    }
+
+    /**
+     * 로그인 사용자가 댓글을 남긴 작품 ID 집합을 조회합니다.
+     */
+    private java.util.Set<Long> getCommentedArtworkIds(Long userId, List<Artwork> artworks) {
+        if (userId == null || artworks.isEmpty()) {
+            return java.util.Set.of();
+        }
+
+        try {
+            List<Long> artworkIds = artworks.stream()
+                    .map(Artwork::getArtworkId)
+                    .toList();
+
+            // 사용자가 댓글을 남긴 작품들 중에서 현재 목록에 있는 것들만 필터링
+            return artworkIds.stream()
+                    .filter(artworkId -> commentRepository.existsByUserIdAndArtworkIdAndIsDeletedFalse(userId, artworkId))
+                    .collect(java.util.stream.Collectors.toSet());
+
+        } catch (Exception e) {
+            log.warn("댓글 상태 조회 중 오류 발생 (기본값 사용): {}", e.getMessage());
+            return java.util.Set.of();
+        }
     }
 }

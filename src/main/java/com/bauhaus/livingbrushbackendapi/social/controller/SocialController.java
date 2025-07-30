@@ -126,26 +126,31 @@ public class SocialController {
 
     /**
      * 작품 댓글 목록 조회 (페이징)
+     * 로그인한 사용자인 경우 내가 작성한 댓글 여부가 포함됩니다.
      * 
      * @param artworkId 작품 ID
      * @param page 페이지 번호 (0부터 시작)
      * @param size 페이지 크기
+     * @param currentUserId 현재 로그인한 사용자 ID (비회원인 경우 null)
      * @return 댓글 목록
      */
     @GetMapping("/artworks/{artworkId}/comments")
-    @Operation(summary = "작품 댓글 목록 조회", description = "특정 작품의 댓글 목록을 페이징으로 조회합니다. 최신순으로 정렬됩니다.")
+    @Operation(summary = "작품 댓글 목록 조회", description = "특정 작품의 댓글 목록을 페이징으로 조회합니다. 최신순으로 정렬되며, 로그인한 사용자는 본인 댓글 여부가 포함됩니다.")
     public ResponseEntity<CommentListResponse> getComments(
             @Parameter(description = "작품 ID", example = "1") 
             @PathVariable Long artworkId,
             @Parameter(description = "페이지 번호 (0부터 시작)", example = "0") 
             @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "페이지 크기", example = "20") 
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "현재 로그인한 사용자 ID (비회원인 경우 null)", hidden = true)
+            @RequestHeader(value = "User-Id", required = false) Long currentUserId) {
         
-        log.info("댓글 목록 조회 API 호출: artworkId={}, page={}, size={}", artworkId, page, size);
+        log.info("댓글 목록 조회 API 호출: artworkId={}, page={}, size={}, currentUserId={}", 
+                artworkId, page, size, currentUserId != null ? currentUserId : "게스트");
         
         Pageable pageable = PageRequest.of(page, size);
-        CommentListResponse response = socialService.getComments(artworkId, pageable);
+        CommentListResponse response = socialService.getComments(artworkId, pageable, currentUserId);
         return ResponseEntity.ok(response);
     }
 
