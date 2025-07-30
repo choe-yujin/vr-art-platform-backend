@@ -46,6 +46,7 @@ public class ArtworkListResponse {
     // 로그인 사용자 전용 (게스트는 null)
     private Boolean isLiked;           // 좋아요 여부 (하트)
     private Boolean isBookmarked;      // 즐겨찾기 여부 (별)
+    private Boolean hasMyComment;      // 내가 댓글을 남겼는지 여부
 
     @Builder
     private ArtworkListResponse(Long artworkId, Long userId, String userNickname, String profileUrl, String title, String thumbnailUrl,

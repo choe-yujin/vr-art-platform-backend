@@ -27,6 +27,7 @@ import com.bauhaus.livingbrushbackendapi.user.repository.UserRepository;
 import com.bauhaus.livingbrushbackendapi.user.repository.UserProfileRepository;
 import com.bauhaus.livingbrushbackendapi.qrcode.repository.QrCodeRepository;
 import com.bauhaus.livingbrushbackendapi.qrcode.entity.QrCode;
+import com.bauhaus.livingbrushbackendapi.social.repository.LikeRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -69,8 +70,9 @@ public class ArtworkService {
     private final QrCodeRepository qrCodeRepository;
     private final FileNameGenerator fileNameGenerator;
     private final ArtworkIdGenerator artworkIdGenerator;
-    // 🎯 작가 프로필 정보 조회를 위한 Repository 추가
     private final UserProfileRepository userProfileRepository;
+    // 🎯 소셜 기능을 위한 Repository 추가
+    private final LikeRepository likeRepository;
 
     // ====================================================================
     // ✨ 작품 생성 로직 (시나리오 지원)
@@ -545,14 +547,38 @@ public class ArtworkService {
 
     /**
      * 다른 사용자의 공개 작품만 조회 (페이징)
+     * 로그인한 사용자인 경우 좋아요/즐겨찾기 상태가 포함됩니다.
      */
     public Page<ArtworkListResponse> getPublicArtworksByUser(Long userId, int page, int size) {
-        log.info("다른 사용자의 공개 작품 목록 조회 - 사용자 ID: {}", userId);
+        return getPublicArtworksByUser(userId, page, size, null); // 게스트로 처리
+    }
+
+    /**
+     * 다른 사용자의 공개 작품만 조회 (페이징) - 로그인 사용자 지원
+     */
+    public Page<ArtworkListResponse> getPublicArtworksByUser(Long userId, int page, int size, Long requestUserId) {
+        log.info("사용자 공개 작품 목록 조회 - 사용자 ID: {}, 요청자: {}", userId, requestUserId != null ? requestUserId : "게스트");
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<Artwork> artworks = artworkRepository.findByUser_UserIdAndVisibilityOrderByCreatedAtDesc(
                 userId, VisibilityType.PUBLIC, pageable);
-        return artworks.map(ArtworkListResponse::from);
+
+        // 게스트인 경우
+        if (requestUserId == null) {
+            return artworks.map(ArtworkListResponse::from);
+        }
+
+        // 로그인 사용자인 경우 - 실제 좋아요/즐겨찾기 상태 조회
+        java.util.Set<Long> likedArtworkIds = getLikedArtworkIds(requestUserId, artworks.getContent());
+        java.util.Set<Long> bookmarkedArtworkIds = getBookmarkedArtworkIds(requestUserId, artworks.getContent());
+
+        return artworks.map(artwork -> ArtworkListResponse.from(
+            artwork, 
+            requestUserId, 
+            likedArtworkIds.contains(artwork.getArtworkId()),
+            bookmarkedArtworkIds.contains(artwork.getArtworkId()),
+            0 // 임시로 댓글 수 0으로 설정
+        ));
     }
 
     /**
@@ -587,11 +613,9 @@ public class ArtworkService {
             return artworks.map(ArtworkListResponse::from);
         }
 
-        // 로그인 사용자인 경우 - 좋아요/즐겨찾기 상태 포함
-        // TODO: 실제 좋아요/즐겨찾기 서비스가 구현되면 연동
-        // 현재는 빈 Set으로 처리 (모든 상태가 false)
-        java.util.Set<Long> likedArtworkIds = java.util.Set.of(); // 임시: 빈 Set
-        java.util.Set<Long> bookmarkedArtworkIds = java.util.Set.of(); // 임시: 빈 Set
+            // 로그인 사용자인 경우 - 실제 좋아요/즐겨찾기 상태 조회
+        java.util.Set<Long> likedArtworkIds = getLikedArtworkIds(requestUserId, artworks.getContent());
+        java.util.Set<Long> bookmarkedArtworkIds = getBookmarkedArtworkIds(requestUserId, artworks.getContent());
 
         return artworks.map(artwork -> ArtworkListResponse.from(
             artwork, 
@@ -933,5 +957,47 @@ public class ArtworkService {
         } else {
             log.debug("작품 {} GLB 파일 없음 (삭제 생략)", artwork.getArtworkId());
         }
+    }
+
+    // ====================================================================
+    // ✨ 소셜 기능 헬퍼 메서드들
+    // ====================================================================
+
+    /**
+     * 로그인 사용자가 좋아요한 작품 ID 집합을 조회합니다.
+     */
+    private java.util.Set<Long> getLikedArtworkIds(Long userId, List<Artwork> artworks) {
+        if (userId == null || artworks.isEmpty()) {
+            return java.util.Set.of();
+        }
+
+        try {
+            List<Long> artworkIds = artworks.stream()
+                    .map(Artwork::getArtworkId)
+                    .toList();
+
+            // 사용자가 좋아요한 작품들 중에서 현재 목록에 있는 것들만 필터링
+            return artworkIds.stream()
+                    .filter(artworkId -> likeRepository.existsByUserIdAndArtworkId(userId, artworkId))
+                    .collect(java.util.stream.Collectors.toSet());
+
+        } catch (Exception e) {
+            log.warn("좋아요 상태 조회 중 오류 발생 (기본값 사용): {}", e.getMessage());
+            return java.util.Set.of();
+        }
+    }
+
+    /**
+     * 로그인 사용자가 즐겨찾기한 작품 ID 집합을 조회합니다.
+     * TODO: 즐겨찾기 기능이 구현되면 실제 로직으로 교체
+     */
+    private java.util.Set<Long> getBookmarkedArtworkIds(Long userId, List<Artwork> artworks) {
+        if (userId == null || artworks.isEmpty()) {
+            return java.util.Set.of();
+        }
+
+        // TODO: 즐겨찾기 Repository가 구현되면 실제 조회 로직 추가
+        // 현재는 빈 Set 반환 (모든 즐겨찾기 상태가 false)
+        return java.util.Set.of();
     }
 }
