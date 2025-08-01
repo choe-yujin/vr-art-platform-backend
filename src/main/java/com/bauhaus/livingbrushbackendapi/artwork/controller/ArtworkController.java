@@ -6,6 +6,7 @@ import com.bauhaus.livingbrushbackendapi.artwork.dto.ArtworkListResponse;
 import com.bauhaus.livingbrushbackendapi.artwork.dto.ArtworkResponse;
 import com.bauhaus.livingbrushbackendapi.artwork.dto.ArtworkUpdateRequest;
 import com.bauhaus.livingbrushbackendapi.artwork.service.ArtworkService;
+import com.bauhaus.livingbrushbackendapi.security.UserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -243,16 +244,17 @@ public class ArtworkController {
 
     @Operation(
             summary = "다른 사용자의 공개 작품 조회",
-            description = "특정 사용자의 공개 작품만 페이징으로 조회합니다. 다른 사람의 프로필 페이지에서 사용됩니다. 로그인한 사용자인 경우 좋아요/즐겨찾기 상태가 포함됩니다."
+            description = "특정 사용자의 공개 작품만 페이징으로 조회합니다. 비회원도 접근 가능하며, 로그인 사용자의 경우 좋아요/즐겨찾기 상태가 포함됩니다."
     )
     @GetMapping("/user/{userId}/public")
     public ResponseEntity<Page<ArtworkListResponse>> getPublicArtworksByUser(
             @Parameter(description = "사용자 ID", required = true) @PathVariable Long userId,
             @Parameter(description = "페이지 번호 (0부터 시작)", example = "0") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "페이지 크기", example = "20") @RequestParam(defaultValue = "20") int size,
-            @Parameter(description = "요청자 사용자 ID (비회원인 경우 null)", hidden = true)
-            @org.springframework.security.core.annotation.AuthenticationPrincipal(errorOnInvalidType = false) Long requestUserId
+            @Parameter(description = "JWT 인증된 사용자 정보 (비회원인 경우 null)", hidden = true)
+            @AuthenticationPrincipal(errorOnInvalidType = false) UserPrincipal userPrincipal
     ) {
+        Long requestUserId = userPrincipal != null ? userPrincipal.getId() : null;
         log.info("사용자 공개 작품 목록 조회 요청 - 사용자 ID: {}, 요청자: {}", userId, requestUserId != null ? requestUserId : "게스트");
 
         Page<ArtworkListResponse> response = artworkService.getPublicArtworksByUser(userId, page, size, requestUserId);
