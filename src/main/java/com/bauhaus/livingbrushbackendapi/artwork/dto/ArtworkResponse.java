@@ -34,27 +34,28 @@ public class ArtworkResponse {
     private BigDecimal priceCash;
     private int favoriteCount;
     private int viewCount;
+    private int commentCount;  // 댓글 수 추가
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    
+
     // 추가 정보
     private boolean isPublic;
     private boolean isPaid;
     private boolean hasThumbnail;
     private String qrImageUrl;  // QR 이미지 URL (생성된 경우만)
-    
+
     // 🎯 소셜 정보 (안드로이드 호환성)
     private Boolean isLiked;     // 현재 사용자의 좋아요 여부 (비로그인 시 null)
-    
+
     // 🎯 작가 정보 (프론트엔드 호환성을 위한 user 객체)
     private UserInfo user;
 
     @Builder
     private ArtworkResponse(Long artworkId, Long userId, String userNickname, String title, String description,
-                           String glbUrl, Long thumbnailMediaId, String thumbnailUrl, VisibilityType visibility,
-                           BigDecimal priceCash, int favoriteCount, int viewCount, LocalDateTime createdAt,
-                           LocalDateTime updatedAt, boolean isPublic, boolean isPaid, boolean hasThumbnail,
-                           String qrImageUrl, Boolean isLiked, UserInfo user) {
+                            String glbUrl, Long thumbnailMediaId, String thumbnailUrl, VisibilityType visibility,
+                            BigDecimal priceCash, int favoriteCount, int viewCount, int commentCount, LocalDateTime createdAt,
+                            LocalDateTime updatedAt, boolean isPublic, boolean isPaid, boolean hasThumbnail,
+                            String qrImageUrl, Boolean isLiked, UserInfo user) {
         this.artworkId = artworkId;
         this.userId = userId;
         this.userNickname = userNickname;
@@ -67,6 +68,7 @@ public class ArtworkResponse {
         this.priceCash = priceCash;
         this.favoriteCount = favoriteCount;
         this.viewCount = viewCount;
+        this.commentCount = commentCount;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.isPublic = isPublic;
@@ -110,20 +112,20 @@ public class ArtworkResponse {
      * Artwork 엔티티로부터 DTO 생성 (QR URL 포함)
      */
     public static ArtworkResponse from(Artwork artwork) {
-        return from(artwork, null, null);  // QR URL, UserProfile 없이 생성
+        return from(artwork, null, null, null, null, 0);  // QR URL, UserProfile, isLiked, commentCount 없이 생성
     }
 
     /**
      * Artwork 엔티티로부터 DTO 생성 (QR URL 포함)
      */
     public static ArtworkResponse from(Artwork artwork, String qrImageUrl) {
-        return from(artwork, qrImageUrl, null);  // UserProfile 없이 생성
+        return from(artwork, qrImageUrl, null, null, null, 0);  // UserProfile, isLiked, commentCount 없이 생성
     }
 
     /**
-     * 🎯 Artwork 엔티티로부터 DTO 생성 (작가 프로필 정보 + 좋아요 상태 포함)
+     * 🎯 Artwork 엔티티로부터 DTO 생성 (작가 프로필 정보 + 좋아요 상태 + 댓글 수 포함)
      */
-    public static ArtworkResponse from(Artwork artwork, String qrImageUrl, String profileImageUrl, String bio, Boolean isLiked) {
+    public static ArtworkResponse from(Artwork artwork, String qrImageUrl, String profileImageUrl, String bio, Boolean isLiked, int commentCount) {
         // 작가 정보 생성
         UserInfo userInfo = UserInfo.of(
                 artwork.getUser().getUserId(),
@@ -145,6 +147,7 @@ public class ArtworkResponse {
                 .priceCash(artwork.getPriceCash())
                 .favoriteCount(artwork.getFavoriteCount())
                 .viewCount(artwork.getViewCount())
+                .commentCount(commentCount)  // 실제 댓글 수 사용
                 .createdAt(artwork.getCreatedAt())
                 .updatedAt(artwork.getUpdatedAt())
                 .isPublic(artwork.isPublic())
@@ -160,7 +163,7 @@ public class ArtworkResponse {
      * 🎯 Artwork 엔티티로부터 DTO 생성 (작가 프로필 정보 포함, 기존 호환성)
      */
     public static ArtworkResponse from(Artwork artwork, String qrImageUrl, String profileImageUrl, String bio) {
-        return from(artwork, qrImageUrl, profileImageUrl, bio, null); // isLiked = null (비로그인)
+        return from(artwork, qrImageUrl, profileImageUrl, bio, null, 0); // isLiked = null (비로그인), commentCount = 0
     }
 
     /**
@@ -188,6 +191,7 @@ public class ArtworkResponse {
                 .priceCash(artwork.getPriceCash())
                 .favoriteCount(artwork.getFavoriteCount())
                 .viewCount(artwork.getViewCount())
+                .commentCount(0)  // 하위 호환성을 위해 0으로 설정
                 .createdAt(artwork.getCreatedAt())
                 .updatedAt(artwork.getUpdatedAt())
                 .isPublic(artwork.isPublic())
@@ -203,6 +207,6 @@ public class ArtworkResponse {
      * 성공 응답 생성 팩토리 메서드
      */
     public static ArtworkResponse success(Artwork artwork) {
-        return from(artwork);
+        return from(artwork, null, null, null, null, 0);
     }
 }

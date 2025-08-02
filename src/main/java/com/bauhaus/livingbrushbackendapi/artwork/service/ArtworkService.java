@@ -29,6 +29,7 @@ import com.bauhaus.livingbrushbackendapi.qrcode.repository.QrCodeRepository;
 import com.bauhaus.livingbrushbackendapi.qrcode.entity.QrCode;
 import com.bauhaus.livingbrushbackendapi.social.repository.LikeRepository;
 import com.bauhaus.livingbrushbackendapi.social.repository.CommentRepository;
+import com.bauhaus.livingbrushbackendapi.social.service.SocialService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -44,15 +45,15 @@ import java.util.Optional;
 
 /**
  * 작품(Artwork) 비즈니스 로직 서비스
- * 
+ *
  * 🎯 핵심 시나리오 완벽 지원:
  * 1. 작품 먼저 생성 → 미디어 촬영 → 연결
- * 2. 미디어 먼저 촬영 → 작품 생성 → 연결  
+ * 2. 미디어 먼저 촬영 → 작품 생성 → 연결
  * 3. 독립 미디어를 기존 작품과 나중에 연결
- * 
+ *
  * Media 테이블의 artwork_id Nullable 구조를 활용하여
  * 작품과 미디어의 생성 순서에 제약이 없는 유연한 매핑을 제공합니다.
- * 
+ *
  * @author Bauhaus Team
  * @since 1.0
  */
@@ -75,6 +76,7 @@ public class ArtworkService {
     // 🎯 소셜 기능을 위한 Repository 추가
     private final LikeRepository likeRepository;
     private final CommentRepository commentRepository;
+    private final SocialService socialService;
 
     // ====================================================================
     // ✨ 작품 생성 로직 (시나리오 지원)
@@ -89,8 +91,8 @@ public class ArtworkService {
     @Transactional
     public ArtworkResponse createVrArtwork(Long userId, VrArtworkCreateRequest vrRequest, MultipartFile glbFile) {
         log.info("=== VR 작품 생성 시작 ===");
-        log.info("사용자 ID: {}, 파일: {}, 태그 수: {}", 
-                userId, glbFile.getOriginalFilename(), 
+        log.info("사용자 ID: {}, 파일: {}, 태그 수: {}",
+                userId, glbFile.getOriginalFilename(),
                 vrRequest.hasSelectedTags() ? vrRequest.getTagIds().size() : 0);
 
         try {
@@ -99,11 +101,11 @@ public class ArtworkService {
 
             // 2. 임시 제목으로 작품 엔티티 먼저 생성
             Artwork artwork = Artwork.create(
-                user,
-                "temporary_title", // 임시 제목
-                "placeholder", // 임시 GLB URL
-                vrRequest.generateDefaultDescription(),
-                null // VR에서는 가격 설정 없음
+                    user,
+                    "temporary_title", // 임시 제목
+                    "placeholder", // 임시 GLB URL
+                    vrRequest.generateDefaultDescription(),
+                    null // VR에서는 가격 설정 없음
             );
 
             // 3. 작품 저장하여 ID 생성
@@ -124,7 +126,7 @@ public class ArtworkService {
             // 6. GLB 파일을 S3에 저장
             FileStorageContext context = FileStorageContext.forArtworkGlb(userId, artworkId);
             String glbUrl = fileStorageService.saveWithContext(
-                glbFile.getBytes(), uniqueFileName, context);
+                    glbFile.getBytes(), uniqueFileName, context);
             log.info("GLB 파일 업로드 완료: {}", glbUrl);
 
             // 7. 작품에 실제 GLB URL 업데이트
@@ -144,7 +146,7 @@ public class ArtworkService {
             }
 
             log.info("=== VR 작품 생성 완료 - 제목: '{}' ===", finalTitle);
-            return ArtworkResponse.from(savedArtwork);
+            return ArtworkResponse.from(savedArtwork, null, null, null, null, 0); // 새 작품이므로 댓글 수 0
 
         } catch (CustomException e) {
             log.error("VR 작품 생성 중 비즈니스 예외 발생: {}", e.getMessage());
@@ -172,11 +174,11 @@ public class ArtworkService {
 
             // 2. 작품 엔티티 먼저 생성 (GLB URL 없이)
             Artwork artwork = Artwork.create(
-                user,
-                request.getTitle(),
-                "placeholder", // 임시 URL
-                request.getDescription(),
-                request.getPriceCash()
+                    user,
+                    request.getTitle(),
+                    "placeholder", // 임시 URL
+                    request.getDescription(),
+                    request.getPriceCash()
             );
 
             // 3. 작품 저장하여 ID 생성
@@ -192,7 +194,7 @@ public class ArtworkService {
             // 5. GLB 파일을 S3에 저장 (실제 작품 ID 사용)
             FileStorageContext context = FileStorageContext.forArtworkGlb(userId, artworkId);
             String glbUrl = fileStorageService.saveWithContext(
-                glbFile.getBytes(), uniqueFileName, context);
+                    glbFile.getBytes(), uniqueFileName, context);
             log.info("GLB 파일 업로드 완료: {}", glbUrl);
 
             // 7. 작품에 실제 GLB URL 업데이트
@@ -212,7 +214,7 @@ public class ArtworkService {
             }
 
             log.info("=== 작품 생성 완료 ===");
-            return ArtworkResponse.from(savedArtwork);
+            return ArtworkResponse.from(savedArtwork, null, null, null, null, 0); // 새 작품이므로 댓글 수 0
 
         } catch (CustomException e) {
             log.error("작품 생성 중 비즈니스 예외 발생: {}", e.getMessage());
@@ -243,11 +245,11 @@ public class ArtworkService {
 
             // 3. 작품 엔티티 생성
             Artwork artwork = Artwork.create(
-                user,
-                request.getTitle(),
-                request.getGlbUrl(),
-                request.getDescription(),
-                request.getPriceCash()
+                    user,
+                    request.getTitle(),
+                    request.getGlbUrl(),
+                    request.getDescription(),
+                    request.getPriceCash()
             );
 
             // 4. 작품 저장
@@ -268,7 +270,7 @@ public class ArtworkService {
             }
 
             log.info("=== 메타데이터 작품 생성 완료 ===");
-            return ArtworkResponse.from(savedArtwork);
+            return ArtworkResponse.from(savedArtwork, null, null, null, null, 0); // 새 작품이므로 댓글 수 0
 
         } catch (CustomException e) {
             log.error("메타데이터 작품 생성 중 비즈니스 예외 발생: {}", e.getMessage());
@@ -368,7 +370,7 @@ public class ArtworkService {
             }
 
             log.info("=== 작품 정보 업데이트 완료 ===");
-            return ArtworkResponse.from(artwork);
+            return ArtworkResponse.from(artwork, null, null, null, null, 0); // 업데이트된 작품이므로 댓글 수는 기존 유지
 
         } catch (CustomException e) {
             log.error("작품 업데이트 중 비즈니스 예외 발생: {}", e.getMessage());
@@ -397,7 +399,7 @@ public class ArtworkService {
             artwork.publish();
             log.info("작품 {} 공개 전환 완료", artworkId);
 
-            return ArtworkResponse.from(artwork);
+            return ArtworkResponse.from(artwork, null, null, null, null, 0); // 공개 전환된 작품이므로 댓글 수는 기존 유지
 
         } catch (CustomException e) {
             log.error("작품 공개 전환 중 비즈니스 예외 발생: {}", e.getMessage());
@@ -424,7 +426,7 @@ public class ArtworkService {
             deactivateQrCodesIfExists(artworkId);
 
             log.info("작품 {} 비공개 전환 완료", artworkId);
-            return ArtworkResponse.from(artwork);
+            return ArtworkResponse.from(artwork, null, null, null, null, 0); // 비공개 전환된 작품이므로 댓글 수는 기존 유지
 
         } catch (CustomException e) {
             log.error("작품 비공개 전환 중 비즈니스 예외 발생: {}", e.getMessage());
@@ -515,19 +517,40 @@ public class ArtworkService {
                 UserProfile profile = userProfile.get();
                 profileImageUrl = profile.getProfileImageUrl();
                 bio = profile.isBioPublic() ? profile.getBio() : null; // 비공개 설정 시 null
-                log.debug("작가 프로필 정보 조회 성공 - 사용자 ID: {}, 프로필 이미지: {}, bio 공개: {}", 
-                         artwork.getUser().getUserId(), 
-                         profileImageUrl != null ? "있음" : "없음",
-                         profile.isBioPublic());
+                log.debug("작가 프로필 정보 조회 성공 - 사용자 ID: {}, 프로필 이미지: {}, bio 공개: {}",
+                        artwork.getUser().getUserId(),
+                        profileImageUrl != null ? "있음" : "없음",
+                        profile.isBioPublic());
             } else {
                 log.warn("작가 프로필 정보 없음 - 사용자 ID: {}", artwork.getUser().getUserId());
             }
         } catch (Exception e) {
-            log.warn("작가 프로필 정보 조회 중 오류 발생 (기본값 사용) - 사용자 ID: {}, 오류: {}", 
+            log.warn("작가 프로필 정보 조회 중 오류 발생 (기본값 사용) - 사용자 ID: {}, 오류: {}",
                     artwork.getUser().getUserId(), e.getMessage());
         }
 
-        return ArtworkResponse.from(artwork, qrImageUrl, profileImageUrl, bio);
+        // 🎯 댓글 수 조회
+        int commentCount = 0;
+        try {
+            commentCount = socialService.getCommentCount(artworkId);
+            log.debug("댓글 수 조회 성공 - 작품 ID: {}, 댓글 수: {}", artworkId, commentCount);
+        } catch (Exception e) {
+            log.warn("댓글 수 조회 중 오류 발생 (기본값 0 사용) - 작품 ID: {}, 오류: {}", artworkId, e.getMessage());
+        }
+
+        // 🎯 좋아요 상태 조회 (로그인 사용자인 경우)
+        Boolean isLiked = null;
+        if (requestUserId != null) {
+            try {
+                isLiked = socialService.isLikedByUser(requestUserId, artworkId);
+                log.debug("좋아요 상태 조회 성공 - 사용자 ID: {}, 작품 ID: {}, 좋아요: {}", requestUserId, artworkId, isLiked);
+            } catch (Exception e) {
+                log.warn("좋아요 상태 조회 중 오류 발생 (기본값 null 사용) - 사용자 ID: {}, 작품 ID: {}, 오류: {}",
+                        requestUserId, artworkId, e.getMessage());
+            }
+        }
+
+        return ArtworkResponse.from(artwork, qrImageUrl, profileImageUrl, bio, isLiked, commentCount);
     }
 
     /**
@@ -569,19 +592,19 @@ public class ArtworkService {
         // 로그인 사용자인 경우 좋아요/즐겨찾기/댓글 상태 포함
         if (requestUserId != null) {
             List<Artwork> artworkList = artworks.getContent();
-            
+
             // 사용자의 좋아요/즐겨찾기/댓글 상태 조회
             java.util.Set<Long> likedArtworkIds = getLikedArtworkIds(requestUserId, artworkList);
             java.util.Set<Long> bookmarkedArtworkIds = getBookmarkedArtworkIds(requestUserId, artworkList);
             java.util.Set<Long> commentedArtworkIds = getCommentedArtworkIds(requestUserId, artworkList);
-            
+
             // 로그인 사용자용 DTO 리스트 생성
             List<ArtworkListResponse> responseList = ArtworkListResponse.fromList(
-                artworkList, requestUserId, likedArtworkIds, bookmarkedArtworkIds, commentedArtworkIds);
-            
+                    artworkList, requestUserId, likedArtworkIds, bookmarkedArtworkIds, commentedArtworkIds);
+
             // Page 객체 재구성
             return new org.springframework.data.domain.PageImpl<>(
-                responseList, pageable, artworks.getTotalElements());
+                    responseList, pageable, artworks.getTotalElements());
         } else {
             // 게스트 사용자는 단순한 from() 메서드 사용
             return artworks.map(ArtworkListResponse::from);
@@ -615,7 +638,7 @@ public class ArtworkService {
                     VisibilityType.PUBLIC, pageable);
         };
 
-        log.info("📊 DB에서 조회된 공개 작품 수: {}, 총 페이지: {}, 현재 페이지: {}", 
+        log.info("📊 DB에서 조회된 공개 작품 수: {}, 총 페이지: {}, 현재 페이지: {}",
                 artworks.getContent().size(), artworks.getTotalPages(), artworks.getNumber());
 
         if (artworks.getContent().isEmpty()) {
@@ -623,28 +646,28 @@ public class ArtworkService {
         } else {
             // 첫 번째 작품 정보 로그
             Artwork firstArtwork = artworks.getContent().get(0);
-            log.info("📋 첫 번째 작품 정보: ID={}, 제목='{}', 가시성={}, 작가={}", 
-                    firstArtwork.getArtworkId(), firstArtwork.getTitle(), 
+            log.info("📋 첫 번째 작품 정보: ID={}, 제목='{}', 가시성={}, 작가={}",
+                    firstArtwork.getArtworkId(), firstArtwork.getTitle(),
                     firstArtwork.getVisibility(), firstArtwork.getUser().getNickname());
         }
 
         // 로그인 사용자인 경우 좋아요/즐겨찾기/댓글 상태 포함
         if (requestUserId != null) {
             List<Artwork> artworkList = artworks.getContent();
-            
+
             // 사용자의 좋아요/즐겨찾기/댓글 상태 조회
             java.util.Set<Long> likedArtworkIds = getLikedArtworkIds(requestUserId, artworkList);
             java.util.Set<Long> bookmarkedArtworkIds = getBookmarkedArtworkIds(requestUserId, artworkList);
             java.util.Set<Long> commentedArtworkIds = getCommentedArtworkIds(requestUserId, artworkList);
-            
+
             // 로그인 사용자용 DTO 리스트 생성
             List<ArtworkListResponse> responseList = ArtworkListResponse.fromList(
-                artworkList, requestUserId, likedArtworkIds, bookmarkedArtworkIds, commentedArtworkIds);
-            
+                    artworkList, requestUserId, likedArtworkIds, bookmarkedArtworkIds, commentedArtworkIds);
+
             // Page 객체 재구성
             Page<ArtworkListResponse> result = new org.springframework.data.domain.PageImpl<>(
-                responseList, pageable, artworks.getTotalElements());
-            
+                    responseList, pageable, artworks.getTotalElements());
+
             log.info("✅ 공개 작품 갤러리 조회 완료 - 반환된 작품 수: {} (로그인 사용자)", result.getContent().size());
             return result;
         } else {
@@ -679,7 +702,7 @@ public class ArtworkService {
 
     /**
      * 작품에 태그들을 저장하고 각 태그의 사용 횟수를 증가시킵니다.
-     * 
+     *
      * @param artwork 태그를 연결할 작품
      * @param tagIds 연결할 태그 ID 목록 (최대 5개)
      * @throws CustomException 태그가 존재하지 않거나 5개를 초과한 경우
@@ -743,7 +766,7 @@ public class ArtworkService {
 
         // 중복 제거
         List<Long> uniqueTagIds = tagIds.stream().distinct().toList();
-        
+
         // DB에서 태그들 조회
         List<Tag> foundTags = tagRepository.findAllById(uniqueTagIds);
 
@@ -752,7 +775,7 @@ public class ArtworkService {
             List<Long> foundTagIds = foundTags.stream()
                     .map(Tag::getTagId)
                     .toList();
-            
+
             List<Long> notFoundTagIds = uniqueTagIds.stream()
                     .filter(id -> !foundTagIds.contains(id))
                     .toList();
@@ -790,7 +813,7 @@ public class ArtworkService {
     /**
      * 🎯 첫 작품 업로드 시 자동 승격 처리
      * USER 권한 사용자가 첫 작품을 업로드하면 자동으로 ARTIST로 승격됩니다.
-     * 
+     *
      * @param user 대상 사용자
      * @param artworkTitle 업로드된 작품 제목 (로깅용)
      */
@@ -798,8 +821,8 @@ public class ArtworkService {
         try {
             // 1. USER 권한인지 확인
             if (user.getRole() != UserRole.USER) {
-                log.debug("사용자 권한이 USER가 아니므로 승격 로직 생략 - userId: {}, 현재 권한: {}", 
-                         user.getUserId(), user.getRole());
+                log.debug("사용자 권한이 USER가 아니므로 승격 로직 생략 - userId: {}, 현재 권한: {}",
+                        user.getUserId(), user.getRole());
                 return;
             }
 
@@ -810,25 +833,25 @@ public class ArtworkService {
             }
 
             // 3. 자동 승격 실행
-            log.info("🚀 자동 승격 시작 - userId: {}, 권한: {} → ARTIST, 첫 작품: '{}'", 
-                     user.getUserId(), user.getRole(), artworkTitle);
+            log.info("🚀 자동 승격 시작 - userId: {}, 권한: {} → ARTIST, 첫 작품: '{}'",
+                    user.getUserId(), user.getRole(), artworkTitle);
 
             user.promoteToArtist(); // JPA 변경감지로 자동 저장
 
-            log.info("🎉 자동 승격 완료! - userId: {}, 첫 작품: '{}', 승격 시간: {}", 
-                     user.getUserId(), artworkTitle, user.getArtistQualifiedAt());
+            log.info("🎉 자동 승격 완료! - userId: {}, 첫 작품: '{}', 승격 시간: {}",
+                    user.getUserId(), artworkTitle, user.getArtistQualifiedAt());
 
         } catch (Exception e) {
             // 승격 실패가 작품 업로드를 막지 않도록 예외를 로깅만 하고 계속 진행
-            log.error("❌ 자동 승격 실패 (작품 업로드는 계속 진행) - userId: {}, 작품: '{}', 오류: {}", 
-                      user.getUserId(), artworkTitle, e.getMessage(), e);
+            log.error("❌ 자동 승격 실패 (작품 업로드는 계속 진행) - userId: {}, 작품: '{}', 오류: {}",
+                    user.getUserId(), artworkTitle, e.getMessage(), e);
         }
     }
 
     /**
      * 🎯 첫 작품 업로드 여부 확인 (자동 승격용)
      * 해당 사용자의 작품이 현재 저장된 작품이 첫 번째인지 확인합니다.
-     * 
+     *
      * @param userId 사용자 ID
      * @return 첫 번째 작품이면 true, 아니면 false
      */
@@ -854,8 +877,8 @@ public class ArtworkService {
 
         // 2. 작품의 썸네일로 설정
         artwork.setThumbnail(thumbnailMedia);
-        
-        log.info("VR 업로드: 썸네일 미디어 {} → 작품 {} 연결 및 설정 완료", 
+
+        log.info("VR 업로드: 썸네일 미디어 {} → 작품 {} 연결 및 설정 완료",
                 mediaId, artwork.getArtworkId());
     }
 
