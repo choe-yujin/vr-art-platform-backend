@@ -557,7 +557,7 @@ public class ArtworkService {
 
     /**
      * 다른 사용자의 공개 작품만 조회 (페이징) - 로그인 사용자 지원
-     * 🎯 v2.0 개선사항: isLiked 정보를 ArtworkResponse에도 포함
+     * 🔧 원상복구: 기존 잘 되던 방식으로 되돌림
      */
     public Page<ArtworkListResponse> getPublicArtworksByUser(Long userId, int page, int size, Long requestUserId) {
         log.info("사용자 공개 작품 목록 조회 - 사용자 ID: {}, 요청자: {}", userId, requestUserId != null ? requestUserId : "게스트");
@@ -566,24 +566,8 @@ public class ArtworkService {
         Page<Artwork> artworks = artworkRepository.findByUser_UserIdAndVisibilityOrderByCreatedAtDesc(
                 userId, VisibilityType.PUBLIC, pageable);
 
-        // 게스트인 경우
-        if (requestUserId == null) {
-            return artworks.map(ArtworkListResponse::from);
-        }
-
-        // 로그인 사용자인 경우 - 실제 좋아요/즐겨찾기/댓글 상태 조회
-        java.util.Set<Long> likedArtworkIds = getLikedArtworkIds(requestUserId, artworks.getContent());
-        java.util.Set<Long> bookmarkedArtworkIds = getBookmarkedArtworkIds(requestUserId, artworks.getContent());
-        java.util.Set<Long> commentedArtworkIds = getCommentedArtworkIds(requestUserId, artworks.getContent());
-
-        return artworks.map(artwork -> ArtworkListResponse.from(
-            artwork, 
-            requestUserId, 
-            likedArtworkIds.contains(artwork.getArtworkId()),
-            bookmarkedArtworkIds.contains(artwork.getArtworkId()),
-            commentedArtworkIds.contains(artwork.getArtworkId()),
-            0 // 임시로 댓글 수 0으로 설정
-        ));
+        // 🔧 원상복구: 단순한 from() 메서드 사용
+        return artworks.map(ArtworkListResponse::from);
     }
 
     /**
@@ -598,10 +582,10 @@ public class ArtworkService {
 
     /**
      * 공개 작품 갤러리 조회 (페이징, 정렬별)
-     * 로그인한 사용자인 경우 좋아요/즐겨찾기 상태가 포함됩니다.
+     * 🔧 원상복구: 기존 잘 되던 방식으로 되돌림
      */
     public Page<ArtworkListResponse> getPublicArtworks(String sortBy, int page, int size, Long requestUserId) {
-        log.info("공개 작품 갤러리 조회 - 정렬: {}, 요청자: {}", sortBy, requestUserId != null ? requestUserId : "게스트");
+        log.info("🔍 공개 작품 갤러리 조회 시작 - 정렬: {}, 요청자: {}", sortBy, requestUserId != null ? requestUserId : "게스트");
 
         Pageable pageable = PageRequest.of(page, size);
         Page<Artwork> artworks = switch (sortBy.toLowerCase()) {
@@ -613,24 +597,24 @@ public class ArtworkService {
                     VisibilityType.PUBLIC, pageable);
         };
 
-        // 게스트인 경우
-        if (requestUserId == null) {
-            return artworks.map(ArtworkListResponse::from);
+        log.info("📊 DB에서 조회된 공개 작품 수: {}, 총 페이지: {}, 현재 페이지: {}", 
+                artworks.getContent().size(), artworks.getTotalPages(), artworks.getNumber());
+
+        if (artworks.getContent().isEmpty()) {
+            log.warn("⚠️ 공개 작품이 하나도 조회되지 않음! VisibilityType.PUBLIC로 확인 필요");
+        } else {
+            // 첫 번째 작품 정보 로그
+            Artwork firstArtwork = artworks.getContent().get(0);
+            log.info("📋 첫 번째 작품 정보: ID={}, 제목='{}', 가시성={}, 작가={}", 
+                    firstArtwork.getArtworkId(), firstArtwork.getTitle(), 
+                    firstArtwork.getVisibility(), firstArtwork.getUser().getNickname());
         }
 
-            // 로그인 사용자인 경우 - 실제 좋아요/즐겨찾기/댓글 상태 조회
-        java.util.Set<Long> likedArtworkIds = getLikedArtworkIds(requestUserId, artworks.getContent());
-        java.util.Set<Long> bookmarkedArtworkIds = getBookmarkedArtworkIds(requestUserId, artworks.getContent());
-        java.util.Set<Long> commentedArtworkIds = getCommentedArtworkIds(requestUserId, artworks.getContent());
-
-        return artworks.map(artwork -> ArtworkListResponse.from(
-            artwork, 
-            requestUserId, 
-            likedArtworkIds.contains(artwork.getArtworkId()),
-            bookmarkedArtworkIds.contains(artwork.getArtworkId()),
-            commentedArtworkIds.contains(artwork.getArtworkId()),
-            0 // 임시로 댓글 수 0으로 설정
-        ));
+        // 🔧 원상복구: 단순한 from() 메서드 사용
+        Page<ArtworkListResponse> result = artworks.map(ArtworkListResponse::from);
+        
+        log.info("✅ 공개 작품 갤러리 조회 완료 - 반환된 작품 수: {}", result.getContent().size());
+        return result;
     }
 
     /**

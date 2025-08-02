@@ -107,6 +107,19 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/token/refresh")
+    @Operation(summary = "JWT 토큰 갱신 (호환성)", description = "안드로이드 호환성을 위한 대체 경로")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "토큰 갱신 성공"),
+        @ApiResponse(responseCode = "401", description = "유효하지 않은 리프레시 토큰")
+    })
+    public ResponseEntity<AuthResponse> refreshTokenCompat(@Valid @RequestBody TokenRefreshRequest request) {
+        log.info("🔄 [토큰 갱신-호환성] 토큰 갱신 요청 (/token/refresh 경로)");
+        AuthResponse response = authService.refreshToken(request);
+        log.info("✅ [토큰 갱신-호환성] 토큰 갱신 성공 - User ID: {}", response.userId());
+        return ResponseEntity.ok(response);
+    }
+
     /**
      * [추가] 인증 성공 후, 최종 응답 객체(AuthResponse)를 생성하는 헬퍼 메소드입니다.
      * 중복 코드를 제거하고 컨트롤러의 책임을 명확하게 합니다.

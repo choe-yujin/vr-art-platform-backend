@@ -43,19 +43,17 @@ public class SocialController {
      * 작품 좋아요 토글
      * 이미 좋아요를 누른 경우 취소, 누르지 않은 경우 추가
      * 
-     * @param userId 사용자 ID (요청 헤더 또는 인증에서 추출 예정)
-     * @param artworkId 작품 ID
-     * @return 좋아요 토글 결과
+     * 🔧 JWT 인증 방식으로 수정: User-Id 헤더 대신 JWT에서 사용자 ID 추출
      */
     @PostMapping("/artworks/{artworkId}/like")
     @Operation(summary = "작품 좋아요 토글", 
                description = "Scene 8: 정아가 소연의 작품에 좋아요를 누르는 기능. 이미 좋아요를 누른 경우 취소됩니다.")
     public ResponseEntity<LikeToggleResponse> toggleLike(
-            @Parameter(description = "사용자 ID", example = "1") 
-            @RequestHeader("User-Id") Long userId,
             @Parameter(description = "작품 ID", example = "1") 
-            @PathVariable Long artworkId) {
+            @PathVariable Long artworkId,
+            org.springframework.security.core.Authentication authentication) {
         
+        Long userId = (Long) authentication.getPrincipal();
         log.info("좋아요 토글 API 호출: userId={}, artworkId={}", userId, artworkId);
         
         LikeToggleResponse response = socialService.toggleLike(userId, artworkId);
@@ -197,19 +195,17 @@ public class SocialController {
      * 팔로우 토글
      * 이미 팔로우 중인 경우 언팔로우, 팔로우하지 않은 경우 팔로우
      * 
-     * @param followerId 팔로우하는 사용자 ID
-     * @param followingId 팔로우받는 사용자 ID
-     * @return 팔로우 토글 결과
+     * 🔧 JWT 인증 방식으로 수정: User-Id 헤더 대신 JWT에서 사용자 ID 추출
      */
     @PostMapping("/users/{followingId}/follow")
     @Operation(summary = "팔로우 토글", 
                description = "Scene 8: 정아가 소연을 팔로우하는 기능. 이미 팔로우 중인 경우 언팔로우됩니다.")
     public ResponseEntity<FollowToggleResponse> toggleFollow(
-            @Parameter(description = "팔로우하는 사용자 ID", example = "1") 
-            @RequestHeader("User-Id") Long followerId,
             @Parameter(description = "팔로우받는 사용자 ID", example = "2") 
-            @PathVariable Long followingId) {
+            @PathVariable Long followingId,
+            org.springframework.security.core.Authentication authentication) {
         
+        Long followerId = (Long) authentication.getPrincipal();
         log.info("팔로우 토글 API 호출: followerId={}, followingId={}", followerId, followingId);
         
         FollowToggleResponse response = socialService.toggleFollow(followerId, followingId);
