@@ -1,35 +1,43 @@
-# docker-compose.prod.yml (AWS 운영용)
+# docker-compose.prod.yml (AWS 운영용 - 최종 권장 버전)
 
 services:
+  # Spring Boot 애플리케이션 서비스
   app:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: livingbrush-prod-backend
     environment:
-      # 운영용 프로필(application-prod.yml)을 활성화합니다.
+      # 1. 운영용 프로필(application-prod.yml)을 활성화합니다.
       - SPRING_PROFILES_ACTIVE=prod
-      # RDS 접속 정보는 .env.prod 파일에서 주입합니다.
+
+      # =========================================================
+      # ▼▼▼▼▼▼▼▼▼▼▼ Redis 접속 정보 수정 ▼▼▼▼▼▼▼▼▼▼▼
+      # Spring Boot 표준 환경 변수를 사용하여 설정을 강제 주입합니다.
+      # 이 방식은 application.yml의 설정을 덮어쓰므로 가장 확실합니다.
+      # =========================================================
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+      - SPRING_REDIS_PASSWORD=${REDIS_PASSWORD} # .env.prod 파일에서 값을 가져옵니다.
+
+      # 2. RDS 접속 정보는 .env.prod 파일에서 주입합니다.
       - SPRING_DATASOURCE_URL=jdbc:postgresql://${RDS_HOSTNAME}:${RDS_PORT}/${RDS_DB_NAME}
       - SPRING_DATASOURCE_USERNAME=${RDS_USERNAME}
       - SPRING_DATASOURCE_PASSWORD=${RDS_PASSWORD}
-      # Redis 접속 정보 (Docker Compose 서비스명 사용)
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-      # AWS S3 Configuration (IAM Role이 있으면 ACCESS_KEY는 불필요)
+
+      # 3. AWS S3 및 기타 운영에 필요한 환경 변수들
       - S3_BUCKET_NAME=${S3_BUCKET_NAME}
       - AWS_REGION=${AWS_REGION}
-      # 나머지 운영에 필요한 환경 변수들
       - JWT_SECRET=${JWT_SECRET}
       - META_APP_ID=${META_APP_ID}
       - META_APP_SECRET=${META_APP_SECRET}
       - AI_SERVER_URL=${AI_SERVER_URL}
+
     # 운영 환경용 환경 변수 파일을 별도로 사용합니다.
     env_file:
       - .env.prod
     ports:
-      # EC2의 80번 포트(HTTP)를 컨테이너의 8888번 포트로 연결합니다.
+      # EC2의 8888번 포트를 컨테이너의 8888번 포트로 연결합니다.
       - "8888:8888"
     volumes:
       # EC2 호스트의 특정 경로와 컨테이너의 static-files를 연결하여 파일을 영속화합니다.
@@ -44,11 +52,12 @@ services:
   redis:
     image: redis:7-alpine
     container_name: livingbrush-prod-redis
-    command: redis-server --requirepass "${REDIS_PASSWORD:-defaultpassword}"
+    # .env.prod 파일의 REDIS_PASSWORD를 사용하여 비밀번호를 설정합니다.
+    command: redis-server --requirepass "${REDIS_PASSWORD}"
     ports:
       - "6379:6379"
     volumes:
-      # Redis 데이터 영속화
+      # Redis 데이터 영속화를 위해 호스트 경로와 볼륨을 연결합니다.
       - /home/ec2-user/redis-data:/data
     restart: always
     networks:
