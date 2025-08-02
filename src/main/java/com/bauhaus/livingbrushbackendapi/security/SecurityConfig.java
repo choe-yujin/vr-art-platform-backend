@@ -1,7 +1,7 @@
 package com.bauhaus.livingbrushbackendapi.security;
 
-import com.bauhaus.livingbrushbackendapi.security.jwt.JwtAccessDeniedHandler;
-import com.bauhaus.livingbrushbackendapi.security.jwt.JwtAuthenticationEntryPoint;
+import com.bauhaus.livingbrushbackendapi.security.JwtAccessDeniedHandler;
+import com.bauhaus.livingbrushbackendapi.security.JwtAuthenticationEntryPoint;
 import com.bauhaus.livingbrushbackendapi.security.jwt.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
