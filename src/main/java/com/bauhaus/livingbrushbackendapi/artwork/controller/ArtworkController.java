@@ -251,10 +251,9 @@ public class ArtworkController {
             @Parameter(description = "사용자 ID", required = true) @PathVariable Long userId,
             @Parameter(description = "페이지 번호 (0부터 시작)", example = "0") @RequestParam(defaultValue = "0") int page,
             @Parameter(description = "페이지 크기", example = "20") @RequestParam(defaultValue = "20") int size,
-            @Parameter(description = "JWT 인증된 사용자 정보 (비회원인 경우 null)", hidden = true)
-            @AuthenticationPrincipal(errorOnInvalidType = false) UserPrincipal userPrincipal
+            @Parameter(description = "요청자 사용자 ID (비회원인 경우 null)", hidden = true)
+            @org.springframework.security.core.annotation.AuthenticationPrincipal(errorOnInvalidType = false) Long requestUserId
     ) {
-        Long requestUserId = userPrincipal != null ? userPrincipal.getId() : null;
         log.info("사용자 공개 작품 목록 조회 요청 - 사용자 ID: {}, 요청자: {}", userId, requestUserId != null ? requestUserId : "게스트");
 
         Page<ArtworkListResponse> response = artworkService.getPublicArtworksByUser(userId, page, size, requestUserId);

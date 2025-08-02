@@ -557,7 +557,7 @@ public class ArtworkService {
 
     /**
      * 다른 사용자의 공개 작품만 조회 (페이징) - 로그인 사용자 지원
-     * 🔧 원상복구: 기존 잘 되던 방식으로 되돌림
+     * 로그인한 사용자의 경우 좋아요/즐겨찾기/댓글 상태가 포함됩니다.
      */
     public Page<ArtworkListResponse> getPublicArtworksByUser(Long userId, int page, int size, Long requestUserId) {
         log.info("사용자 공개 작품 목록 조회 - 사용자 ID: {}, 요청자: {}", userId, requestUserId != null ? requestUserId : "게스트");
@@ -566,8 +566,26 @@ public class ArtworkService {
         Page<Artwork> artworks = artworkRepository.findByUser_UserIdAndVisibilityOrderByCreatedAtDesc(
                 userId, VisibilityType.PUBLIC, pageable);
 
-        // 🔧 원상복구: 단순한 from() 메서드 사용
-        return artworks.map(ArtworkListResponse::from);
+        // 로그인 사용자인 경우 좋아요/즐겨찾기/댓글 상태 포함
+        if (requestUserId != null) {
+            List<Artwork> artworkList = artworks.getContent();
+            
+            // 사용자의 좋아요/즐겨찾기/댓글 상태 조회
+            java.util.Set<Long> likedArtworkIds = getLikedArtworkIds(requestUserId, artworkList);
+            java.util.Set<Long> bookmarkedArtworkIds = getBookmarkedArtworkIds(requestUserId, artworkList);
+            java.util.Set<Long> commentedArtworkIds = getCommentedArtworkIds(requestUserId, artworkList);
+            
+            // 로그인 사용자용 DTO 리스트 생성
+            List<ArtworkListResponse> responseList = ArtworkListResponse.fromList(
+                artworkList, requestUserId, likedArtworkIds, bookmarkedArtworkIds, commentedArtworkIds);
+            
+            // Page 객체 재구성
+            return new org.springframework.data.domain.PageImpl<>(
+                responseList, pageable, artworks.getTotalElements());
+        } else {
+            // 게스트 사용자는 단순한 from() 메서드 사용
+            return artworks.map(ArtworkListResponse::from);
+        }
     }
 
     /**
@@ -582,7 +600,7 @@ public class ArtworkService {
 
     /**
      * 공개 작품 갤러리 조회 (페이징, 정렬별)
-     * 🔧 원상복구: 기존 잘 되던 방식으로 되돌림
+     * 로그인한 사용자의 경우 좋아요/즐겨찾기/댓글 상태가 포함됩니다.
      */
     public Page<ArtworkListResponse> getPublicArtworks(String sortBy, int page, int size, Long requestUserId) {
         log.info("🔍 공개 작품 갤러리 조회 시작 - 정렬: {}, 요청자: {}", sortBy, requestUserId != null ? requestUserId : "게스트");
@@ -610,11 +628,31 @@ public class ArtworkService {
                     firstArtwork.getVisibility(), firstArtwork.getUser().getNickname());
         }
 
-        // 🔧 원상복구: 단순한 from() 메서드 사용
-        Page<ArtworkListResponse> result = artworks.map(ArtworkListResponse::from);
-        
-        log.info("✅ 공개 작품 갤러리 조회 완료 - 반환된 작품 수: {}", result.getContent().size());
-        return result;
+        // 로그인 사용자인 경우 좋아요/즐겨찾기/댓글 상태 포함
+        if (requestUserId != null) {
+            List<Artwork> artworkList = artworks.getContent();
+            
+            // 사용자의 좋아요/즐겨찾기/댓글 상태 조회
+            java.util.Set<Long> likedArtworkIds = getLikedArtworkIds(requestUserId, artworkList);
+            java.util.Set<Long> bookmarkedArtworkIds = getBookmarkedArtworkIds(requestUserId, artworkList);
+            java.util.Set<Long> commentedArtworkIds = getCommentedArtworkIds(requestUserId, artworkList);
+            
+            // 로그인 사용자용 DTO 리스트 생성
+            List<ArtworkListResponse> responseList = ArtworkListResponse.fromList(
+                artworkList, requestUserId, likedArtworkIds, bookmarkedArtworkIds, commentedArtworkIds);
+            
+            // Page 객체 재구성
+            Page<ArtworkListResponse> result = new org.springframework.data.domain.PageImpl<>(
+                responseList, pageable, artworks.getTotalElements());
+            
+            log.info("✅ 공개 작품 갤러리 조회 완료 - 반환된 작품 수: {} (로그인 사용자)", result.getContent().size());
+            return result;
+        } else {
+            // 게스트 사용자는 단순한 from() 메서드 사용
+            Page<ArtworkListResponse> result = artworks.map(ArtworkListResponse::from);
+            log.info("✅ 공개 작품 갤러리 조회 완료 - 반환된 작품 수: {} (게스트)", result.getContent().size());
+            return result;
+        }
     }
 
     /**
