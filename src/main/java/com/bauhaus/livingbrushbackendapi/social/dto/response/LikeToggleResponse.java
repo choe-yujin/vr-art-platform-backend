@@ -10,8 +10,12 @@ import lombok.NoArgsConstructor;
  * Scene 8 "정아가 좋아요를 누른다" 기능의 응답을 담당합니다.
  * 좋아요 추가/취소 상태와 관련 정보를 포함합니다.
  * 
+ * 🎯 v2.0 개선사항:
+ * - favoriteCount 필드 추가로 안드로이드와 완전 호환
+ * - 실시간 좋아요 수 동기화 지원
+ * 
  * @author Bauhaus Team
- * @version 1.0
+ * @version 2.0
  */
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -28,6 +32,11 @@ public class LikeToggleResponse {
     private boolean isLiked;
 
     /**
+     * 🎯 현재 작품의 총 좋아요 수 (안드로이드 동기화용)
+     */
+    private long favoriteCount;
+
+    /**
      * 응답 메시지
      */
     private String message;
@@ -42,12 +51,14 @@ public class LikeToggleResponse {
      * 
      * @param artworkId 작품 ID
      * @param isLiked 좋아요 상태
+     * @param favoriteCount 현재 총 좋아요 수
      * @param message 응답 메시지
      * @param action 액션 타입
      */
-    private LikeToggleResponse(Long artworkId, boolean isLiked, String message, String action) {
+    private LikeToggleResponse(Long artworkId, boolean isLiked, long favoriteCount, String message, String action) {
         this.artworkId = artworkId;
         this.isLiked = isLiked;
+        this.favoriteCount = favoriteCount;
         this.message = message;
         this.action = action;
     }
@@ -56,12 +67,14 @@ public class LikeToggleResponse {
      * 좋아요 추가 응답 생성
      * 
      * @param artworkId 작품 ID
+     * @param favoriteCount 현재 총 좋아요 수
      * @return 좋아요 추가 응답
      */
-    public static LikeToggleResponse added(Long artworkId) {
+    public static LikeToggleResponse added(Long artworkId, long favoriteCount) {
         return new LikeToggleResponse(
                 artworkId,
                 true,
+                favoriteCount,
                 "작품에 좋아요를 추가했습니다",
                 "ADDED"
         );
@@ -71,12 +84,14 @@ public class LikeToggleResponse {
      * 좋아요 취소 응답 생성
      * 
      * @param artworkId 작품 ID
+     * @param favoriteCount 현재 총 좋아요 수
      * @return 좋아요 취소 응답
      */
-    public static LikeToggleResponse canceled(Long artworkId) {
+    public static LikeToggleResponse canceled(Long artworkId, long favoriteCount) {
         return new LikeToggleResponse(
                 artworkId,
                 false,
+                favoriteCount,
                 "작품 좋아요를 취소했습니다",
                 "CANCELED"
         );

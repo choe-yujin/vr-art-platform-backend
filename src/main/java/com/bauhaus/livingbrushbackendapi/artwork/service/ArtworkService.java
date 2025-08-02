@@ -557,6 +557,7 @@ public class ArtworkService {
 
     /**
      * 다른 사용자의 공개 작품만 조회 (페이징) - 로그인 사용자 지원
+     * 🎯 v2.0 개선사항: isLiked 정보를 ArtworkResponse에도 포함
      */
     public Page<ArtworkListResponse> getPublicArtworksByUser(Long userId, int page, int size, Long requestUserId) {
         log.info("사용자 공개 작품 목록 조회 - 사용자 ID: {}, 요청자: {}", userId, requestUserId != null ? requestUserId : "게스트");

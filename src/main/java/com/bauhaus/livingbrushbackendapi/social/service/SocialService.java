@@ -52,6 +52,9 @@ public class SocialService {
     /**
      * 작품 좋아요 토글
      * 이미 좋아요를 누른 경우 취소, 누르지 않은 경우 추가
+     * 
+     * 🎯 v2.0 개선사항:
+     * - 실제 favoriteCount를 응답에 포함하여 안드로이드 동기화 완성
      */
     @Transactional
     public LikeToggleResponse toggleLike(Long userId, Long artworkId) {
@@ -68,20 +71,24 @@ public class SocialService {
             if (deletedCount == 0) {
                 log.warn("좋아요 취소 시도했으나 해당 레코드를 찾지 못함: userId={}, artworkId={}", userId, artworkId);
             }
-            // [원상 복귀] 기존 메소드명으로 되돌립니다.
             artwork.decrementFavoriteCount();
-            log.info("좋아요 취소 완료: userId={}, artworkId={}", userId, artworkId);
-            // [수정] int를 long으로 형변환하여 Long 타입 파라미터에 전달합니다.
-            return LikeToggleResponse.canceled(artworkId);
+            
+            // 🎯 실제 favoriteCount 전달
+            long currentFavoriteCount = artwork.getFavoriteCount();
+            log.info("좋아요 취소 완료: userId={}, artworkId={}, favoriteCount={}", userId, artworkId, currentFavoriteCount);
+            
+            return LikeToggleResponse.canceled(artworkId, currentFavoriteCount);
         } else {
             // 좋아요 추가
             Like like = new Like(userId, artworkId);
             likeRepository.save(like);
-            // [원상 복귀] 기존 메소드명으로 되돌립니다.
             artwork.incrementFavoriteCount();
-            log.info("좋아요 추가 완료: userId={}, artworkId={}", userId, artworkId);
-            // [수정] int를 long으로 형변환하여 Long 타입 파라미터에 전달합니다.
-            return LikeToggleResponse.added(artworkId);
+            
+            // 🎯 실제 favoriteCount 전달
+            long currentFavoriteCount = artwork.getFavoriteCount();
+            log.info("좋아요 추가 완료: userId={}, artworkId={}, favoriteCount={}", userId, artworkId, currentFavoriteCount);
+            
+            return LikeToggleResponse.added(artworkId, currentFavoriteCount);
         }
     }
 
