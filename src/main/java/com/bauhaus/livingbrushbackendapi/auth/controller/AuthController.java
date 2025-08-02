@@ -95,11 +95,15 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
-    @Operation(summary = "JWT 토큰 갱신", description = "리프레시 토큰으로 새로운 액세스 토큰을 발급합니다.")
+    @Operation(summary = "JWT 토큰 갱신", description = "리프레시 토큰으로 새로운 액세스 토큰과 리프레시 토큰을 발급합니다.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "토큰 갱신 성공"),
+        @ApiResponse(responseCode = "401", description = "유효하지 않은 리프레시 토큰")
+    })
     public ResponseEntity<AuthResponse> refreshToken(@Valid @RequestBody TokenRefreshRequest request) {
-        log.info("토큰 갱신 요청");
+        log.info("🔄 [토큰 갱신] 토큰 갱신 요청");
         AuthResponse response = authService.refreshToken(request);
-        log.info("토큰 갱신 성공 - User ID: {}", response.userId());
+        log.info("✅ [토큰 갱신] 토큰 갱신 성공 - User ID: {}", response.userId());
         return ResponseEntity.ok(response);
     }
 
@@ -127,6 +131,18 @@ public class AuthController {
     }
 
     // ========== 이하 Health Check 및 VR 관련 코드는 변경 없음 ==========
+
+    @GetMapping("/verify")
+    @Operation(summary = "토큰 검증", description = "현재 액세스 토큰의 유효성을 검증합니다.")
+    @ApiResponses(value = {
+        @ApiResponse(responseCode = "200", description = "토큰 유효"),
+        @ApiResponse(responseCode = "401", description = "토큰 무효 또는 만료")
+    })
+    public ResponseEntity<String> verifyToken(Authentication authentication) {
+        Long userId = jwtTokenProvider.getUserIdFromAuthentication(authentication);
+        log.info("✅ [토큰 검증] 토큰 검증 성공 - User ID: {}", userId);
+        return ResponseEntity.ok("Token is valid. User ID: " + userId);
+    }
 
     @GetMapping("/health")
     @Operation(summary = "서버 상태 확인", description = "API 서버의 현재 동작 상태를 확인합니다.")

@@ -32,11 +32,11 @@ public class AuthServiceImpl implements AuthService {
     @Transactional(readOnly = true)
     public AuthResponse refreshToken(TokenRefreshRequest request) {
         String refreshToken = request.refreshToken();
-        log.info("Access Token 갱신 요청 수신");
+        log.info("🔄 [토큰 갱신] Access Token 갱신 요청 수신");
 
-        // 1. [수정] 리프레시 토큰 전용 검증 메소드를 호출하여 의도를 명확하게 합니다.
+        // 1. 리프레시 토큰 전용 검증 메소드를 호출하여 의도를 명확하게 합니다.
         if (!jwtTokenProvider.validateRefreshToken(refreshToken)) {
-            log.warn("유효하지 않은 리프레시 토큰으로 갱신 시도. Token: {}", refreshToken);
+            log.warn("🚨 [토큰 갱신] 유효하지 않은 리프레시 토큰으로 갱신 시도. Token: {}", refreshToken);
             throw new CustomException(ErrorCode.INVALID_TOKEN, "유효하지 않은 리프레시 토큰입니다.");
         }
 
@@ -46,14 +46,16 @@ public class AuthServiceImpl implements AuthService {
         // 3. DB에서 사용자 정보 조회
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> {
-                    log.error("리프레시 토큰에 해당하는 사용자를 찾을 수 없음. User ID: {}", userId);
+                    log.error("🚨 [토큰 갱신] 리프레시 토큰에 해당하는 사용자를 찾을 수 없음. User ID: {}", userId);
                     return new CustomException(ErrorCode.USER_NOT_FOUND);
                 });
 
-        // 4. 새로운 액세스 토큰 생성 (리프레시 토큰은 재발급하지 않는 정책)
+        // 4. 🎯 새로운 액세스 토큰과 리프레시 토큰 모두 생성 (보안 강화)
         String newAccessToken = jwtTokenProvider.createAccessToken(user.getUserId(), user.getRole());
-        log.info("새로운 Access Token 발급 완료. User ID: {}", userId);
+        String newRefreshToken = jwtTokenProvider.createRefreshToken(user.getUserId());
+        
+        log.info("✅ [토큰 갱신] 새로운 Access Token & Refresh Token 발급 완료. User ID: {}", userId);
 
-        return new AuthResponse(newAccessToken, refreshToken, user.getUserId(), user.getNickname(), user.getRole(), false);
+        return new AuthResponse(newAccessToken, newRefreshToken, user.getUserId(), user.getNickname(), user.getRole(), false);
     }
 }
