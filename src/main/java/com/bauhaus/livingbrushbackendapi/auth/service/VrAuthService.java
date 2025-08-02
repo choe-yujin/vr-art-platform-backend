@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -316,14 +317,13 @@ public class VrAuthService {
      * 4자리 랜덤 숫자 코드 생성
      *
      * VR 키보드 입력을 위해 0000~9999 범위의 4자리 숫자를 생성합니다.
-     * AI 개발자 테스트용 고정 코드도 지원합니다.
      *
      * @return 4자리 숫자 문자열 (예: "0123", "9876")
      */
     private String generateManualCode() {
-        // AI 개발자 테스트용 고정 코드 (항상 사용 가능)
-        // 실제 랜덤 코드와 동시에 유지
-        return "9999"; // AI 개발자 전용 테스트 코드
+        Random random = new Random();
+        int code = random.nextInt(10000); // 0~9999 범위
+        return String.format("%04d", code); // 4자리로 포맷팅 (예: 0123, 9876)
     }
 
     /**
