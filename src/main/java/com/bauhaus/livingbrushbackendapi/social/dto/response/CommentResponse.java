@@ -41,6 +41,11 @@ public class CommentResponse {
     private String userNickname;
 
     /**
+     * 작성자 프로필 이미지 URL
+     */
+    private String profileImageUrl;
+
+    /**
      * 댓글 내용 (삭제된 경우 "삭제된 댓글입니다" 표시)
      */
     private String content;
@@ -68,12 +73,13 @@ public class CommentResponse {
     /**
      * 생성자
      */
-    private CommentResponse(Long commentId, Long artworkId, Long userId, String userNickname,
+    private CommentResponse(Long commentId, Long artworkId, Long userId, String userNickname, String profileImageUrl,
                            String content, boolean isDeleted, LocalDateTime createdAt, LocalDateTime updatedAt, Boolean isMine) {
         this.commentId = commentId;
         this.artworkId = artworkId;
         this.userId = userId;
         this.userNickname = userNickname;
+        this.profileImageUrl = profileImageUrl;
         this.content = content;
         this.isDeleted = isDeleted;
         this.createdAt = createdAt;
@@ -86,14 +92,16 @@ public class CommentResponse {
      * 
      * @param comment 댓글 엔티티
      * @param userNickname 작성자 닉네임
+     * @param profileImageUrl 작성자 프로필 이미지 URL
      * @return 댓글 응답 DTO
      */
-    public static CommentResponse from(Comment comment, String userNickname) {
+    public static CommentResponse from(Comment comment, String userNickname, String profileImageUrl) {
         return new CommentResponse(
                 comment.getCommentId(),
                 comment.getArtworkId(),
                 comment.getUserId(),
                 userNickname,
+                profileImageUrl,
                 comment.getDisplayContent(), // 삭제된 댓글인 경우 "삭제된 댓글입니다" 반환
                 comment.isDeleted(),
                 comment.getCreatedAt(),
@@ -107,10 +115,11 @@ public class CommentResponse {
      * 
      * @param comment 댓글 엔티티
      * @param userNickname 작성자 닉네임
+     * @param profileImageUrl 작성자 프로필 이미지 URL
      * @param currentUserId 현재 로그인한 사용자 ID
      * @return 댓글 응답 DTO
      */
-    public static CommentResponse from(Comment comment, String userNickname, Long currentUserId) {
+    public static CommentResponse from(Comment comment, String userNickname, String profileImageUrl, Long currentUserId) {
         boolean isMine = currentUserId != null && comment.getUserId().equals(currentUserId);
         
         return new CommentResponse(
@@ -118,6 +127,7 @@ public class CommentResponse {
                 comment.getArtworkId(),
                 comment.getUserId(),
                 userNickname,
+                profileImageUrl,
                 comment.getDisplayContent(), // 삭제된 댓글인 경우 "삭제된 댓글입니다" 반환
                 comment.isDeleted(),
                 comment.getCreatedAt(),

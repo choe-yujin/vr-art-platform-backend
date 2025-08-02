@@ -130,8 +130,9 @@ public class SocialService {
         log.info("댓글 작성 완료: commentId={}, userId={}, artworkId={}",
                 savedComment.getCommentId(), userId, artworkId);
 
-        // [수정] CommentResponse 생성자에 필요한 인자만 전달합니다.
-        return CommentResponse.from(savedComment, user.getNickname());
+        // [수정] CommentResponse 생성자에 프로필 이미지 URL 포함
+        String profileImageUrl = user.getProfileImageUrl();
+        return CommentResponse.from(savedComment, user.getNickname(), profileImageUrl);
     }
 
     /**
@@ -155,12 +156,13 @@ public class SocialService {
 
         List<CommentResponse> comments = commentPage.getContent().stream()
                 .map(comment -> {
+                    String profileImageUrl = comment.getUser().getProfileImageUrl();
                     if (currentUserId != null) {
                         // 로그인 사용자: isMine 정보 포함
-                        return CommentResponse.from(comment, comment.getUser().getNickname(), currentUserId);
+                        return CommentResponse.from(comment, comment.getUser().getNickname(), profileImageUrl, currentUserId);
                     } else {
                         // 게스트: isMine = null
-                        return CommentResponse.from(comment, comment.getUser().getNickname());
+                        return CommentResponse.from(comment, comment.getUser().getNickname(), profileImageUrl);
                     }
                 })
                 .collect(Collectors.toList());

@@ -370,7 +370,9 @@ public class ArtworkService {
             }
 
             log.info("=== 작품 정보 업데이트 완료 ===");
-            return ArtworkResponse.from(artwork, null, null, null, null, 0); // 업데이트된 작품이므로 댓글 수는 기존 유지
+            // 실제 댓글 수 조회
+            int commentCount = socialService.getCommentCount(artworkId);
+            return ArtworkResponse.from(artwork, null, null, null, null, commentCount);
 
         } catch (CustomException e) {
             log.error("작품 업데이트 중 비즈니스 예외 발생: {}", e.getMessage());
@@ -399,7 +401,9 @@ public class ArtworkService {
             artwork.publish();
             log.info("작품 {} 공개 전환 완료", artworkId);
 
-            return ArtworkResponse.from(artwork, null, null, null, null, 0); // 공개 전환된 작품이므로 댓글 수는 기존 유지
+            // 실제 댓글 수 조회
+            int commentCount = socialService.getCommentCount(artworkId);
+            return ArtworkResponse.from(artwork, null, null, null, null, commentCount);
 
         } catch (CustomException e) {
             log.error("작품 공개 전환 중 비즈니스 예외 발생: {}", e.getMessage());
@@ -426,7 +430,9 @@ public class ArtworkService {
             deactivateQrCodesIfExists(artworkId);
 
             log.info("작품 {} 비공개 전환 완료", artworkId);
-            return ArtworkResponse.from(artwork, null, null, null, null, 0); // 비공개 전환된 작품이므로 댓글 수는 기존 유지
+            // 실제 댓글 수 조회
+            int commentCount = socialService.getCommentCount(artworkId);
+            return ArtworkResponse.from(artwork, null, null, null, null, commentCount);
 
         } catch (CustomException e) {
             log.error("작품 비공개 전환 중 비즈니스 예외 발생: {}", e.getMessage());
@@ -567,7 +573,12 @@ public class ArtworkService {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<Artwork> artworks = artworkRepository.findByUser_UserIdOrderByCreatedAtDesc(userId, pageable);
-        return artworks.map(ArtworkListResponse::from);
+        
+        // 각 작품의 댓글 수를 실제로 조회
+        return artworks.map(artwork -> {
+            int commentCount = socialService.getCommentCount(artwork.getArtworkId());
+            return ArtworkListResponse.from(artwork, commentCount);
+        });
     }
 
     /**
@@ -598,16 +609,30 @@ public class ArtworkService {
             java.util.Set<Long> bookmarkedArtworkIds = getBookmarkedArtworkIds(requestUserId, artworkList);
             java.util.Set<Long> commentedArtworkIds = getCommentedArtworkIds(requestUserId, artworkList);
 
-            // 로그인 사용자용 DTO 리스트 생성
-            List<ArtworkListResponse> responseList = ArtworkListResponse.fromList(
-                    artworkList, requestUserId, likedArtworkIds, bookmarkedArtworkIds, commentedArtworkIds);
+            // 로그인 사용자용 DTO 리스트 생성 (실제 댓글 수 포함)
+            List<ArtworkListResponse> responseList = artworkList.stream()
+                    .map(artwork -> {
+                        int commentCount = socialService.getCommentCount(artwork.getArtworkId());
+                        return ArtworkListResponse.from(
+                                artwork,
+                                requestUserId,
+                                likedArtworkIds.contains(artwork.getArtworkId()),
+                                bookmarkedArtworkIds.contains(artwork.getArtworkId()),
+                                commentedArtworkIds.contains(artwork.getArtworkId()),
+                                commentCount
+                        );
+                    })
+                    .collect(java.util.stream.Collectors.toList());
 
             // Page 객체 재구성
             return new org.springframework.data.domain.PageImpl<>(
                     responseList, pageable, artworks.getTotalElements());
         } else {
-            // 게스트 사용자는 단순한 from() 메서드 사용
-            return artworks.map(ArtworkListResponse::from);
+            // 게스트 사용자는 실제 댓글 수와 함께 from() 메서드 사용
+            return artworks.map(artwork -> {
+                int commentCount = socialService.getCommentCount(artwork.getArtworkId());
+                return ArtworkListResponse.from(artwork, commentCount);
+            });
         }
     }
 
@@ -618,7 +643,11 @@ public class ArtworkService {
         log.info("사용자 작품 목록 조회 - 사용자 ID: {} (모든 작품)", userId);
 
         Page<Artwork> artworks = artworkRepository.findByUser_UserIdOrderByCreatedAtDesc(userId, pageable);
-        return artworks.map(ArtworkListResponse::from);
+        // 각 작품의 댓글 수를 실제로 조회
+        return artworks.map(artwork -> {
+            int commentCount = socialService.getCommentCount(artwork.getArtworkId());
+            return ArtworkListResponse.from(artwork, commentCount);
+        });
     }
 
     /**
@@ -660,9 +689,20 @@ public class ArtworkService {
             java.util.Set<Long> bookmarkedArtworkIds = getBookmarkedArtworkIds(requestUserId, artworkList);
             java.util.Set<Long> commentedArtworkIds = getCommentedArtworkIds(requestUserId, artworkList);
 
-            // 로그인 사용자용 DTO 리스트 생성
-            List<ArtworkListResponse> responseList = ArtworkListResponse.fromList(
-                    artworkList, requestUserId, likedArtworkIds, bookmarkedArtworkIds, commentedArtworkIds);
+            // 로그인 사용자용 DTO 리스트 생성 (실제 댓글 수 포함)
+            List<ArtworkListResponse> responseList = artworkList.stream()
+                    .map(artwork -> {
+                        int commentCount = socialService.getCommentCount(artwork.getArtworkId());
+                        return ArtworkListResponse.from(
+                                artwork,
+                                requestUserId,
+                                likedArtworkIds.contains(artwork.getArtworkId()),
+                                bookmarkedArtworkIds.contains(artwork.getArtworkId()),
+                                commentedArtworkIds.contains(artwork.getArtworkId()),
+                                commentCount
+                        );
+                    })
+                    .collect(java.util.stream.Collectors.toList());
 
             // Page 객체 재구성
             Page<ArtworkListResponse> result = new org.springframework.data.domain.PageImpl<>(
@@ -671,8 +711,11 @@ public class ArtworkService {
             log.info("✅ 공개 작품 갤러리 조회 완료 - 반환된 작품 수: {} (로그인 사용자)", result.getContent().size());
             return result;
         } else {
-            // 게스트 사용자는 단순한 from() 메서드 사용
-            Page<ArtworkListResponse> result = artworks.map(ArtworkListResponse::from);
+            // 게스트 사용자는 실제 댓글 수와 함께 from() 메서드 사용
+            Page<ArtworkListResponse> result = artworks.map(artwork -> {
+                int commentCount = socialService.getCommentCount(artwork.getArtworkId());
+                return ArtworkListResponse.from(artwork, commentCount);
+            });
             log.info("✅ 공개 작품 갤러리 조회 완료 - 반환된 작품 수: {} (게스트)", result.getContent().size());
             return result;
         }
@@ -693,7 +736,11 @@ public class ArtworkService {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<Artwork> artworks = artworkRepository.searchPublicArtworksByTitle(keyword, pageable);
-        return artworks.map(ArtworkListResponse::from);
+        // 각 작품의 댓글 수를 실제로 조회
+        return artworks.map(artwork -> {
+            int commentCount = socialService.getCommentCount(artwork.getArtworkId());
+            return ArtworkListResponse.from(artwork, commentCount);
+        });
     }
 
     // ====================================================================
