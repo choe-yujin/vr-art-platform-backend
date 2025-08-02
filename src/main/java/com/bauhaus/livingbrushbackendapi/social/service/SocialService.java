@@ -72,7 +72,7 @@ public class SocialService {
             artwork.decrementFavoriteCount();
             log.info("좋아요 취소 완료: userId={}, artworkId={}", userId, artworkId);
             // [수정] int를 long으로 형변환하여 Long 타입 파라미터에 전달합니다.
-            return LikeToggleResponse.canceled((long) artwork.getFavoriteCount());
+            return LikeToggleResponse.canceled(artworkId);
         } else {
             // 좋아요 추가
             Like like = new Like(userId, artworkId);
@@ -81,7 +81,7 @@ public class SocialService {
             artwork.incrementFavoriteCount();
             log.info("좋아요 추가 완료: userId={}, artworkId={}", userId, artworkId);
             // [수정] int를 long으로 형변환하여 Long 타입 파라미터에 전달합니다.
-            return LikeToggleResponse.added((long) artwork.getFavoriteCount());
+            return LikeToggleResponse.added(artworkId);
         }
     }
 
