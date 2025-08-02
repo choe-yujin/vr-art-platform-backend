@@ -101,13 +101,13 @@ public class LocalQrService implements QrService {
             byte[] pngData = pngOutputStream.toByteArray();
 
             String fileName = qrToken.toString() + "." + qrConfig.getFormat().toLowerCase();
-            
+
             // 컨텍스트 정보를 포함하여 저장
             FileStorageContext context = FileStorageContext.forQrCode(
-                    artwork.getUser().getUserId(), 
+                    artwork.getUser().getUserId(),
                     artwork.getArtworkId()
             );
-            
+
             return fileStorageService.saveWithContext(pngData, fileName, context);
 
         } catch (WriterException | IOException e) {
@@ -140,7 +140,7 @@ public class LocalQrService implements QrService {
 
     /**
      * Web AR 페이지로 연결되는 URL을 생성합니다.
-     * 
+     *
      * 형식: https://livingbrush.shop/ar/view/{artworkId}
      */
     private String createWebArUrl(Long artworkId) {
@@ -158,5 +158,27 @@ public class LocalQrService implements QrService {
                 .isActive(true)
                 .build();
         qrCodeRepository.save(qrCode);
+    }
+
+    @Override
+    public byte[] generateQrImageBytes(String qrData) {
+        try {
+            AppProperties.Qr qrConfig = appProperties.getQr();
+
+            QRCodeWriter qrCodeWriter = new QRCodeWriter();
+            BitMatrix bitMatrix = qrCodeWriter.encode(qrData, BarcodeFormat.QR_CODE,
+                    qrConfig.getSize(), qrConfig.getSize());
+
+            ByteArrayOutputStream pngOutputStream = new ByteArrayOutputStream();
+            MatrixToImageWriter.writeToStream(bitMatrix, qrConfig.getFormat(), pngOutputStream);
+            byte[] pngData = pngOutputStream.toByteArray();
+
+            log.debug("QR 이미지 바이트 데이터 생성 완료 - 크기: {} bytes", pngData.length);
+            return pngData;
+
+        } catch (WriterException | IOException e) {
+            log.error("QR 이미지 바이트 데이터 생성 중 오류 발생 - Data: {}", qrData, e);
+            throw new CustomException(ErrorCode.QR_GENERATION_FAILED, e);
+        }
     }
 }

@@ -6,6 +6,8 @@ import com.bauhaus.livingbrushbackendapi.exception.common.CustomException;
 import com.bauhaus.livingbrushbackendapi.exception.common.ErrorCode;
 import com.bauhaus.livingbrushbackendapi.qrcode.service.QrService;
 import com.bauhaus.livingbrushbackendapi.security.jwt.JwtTokenProvider;
+import com.bauhaus.livingbrushbackendapi.storage.service.FileStorageContext;
+import com.bauhaus.livingbrushbackendapi.storage.service.FileStorageService;
 import com.bauhaus.livingbrushbackendapi.user.entity.User;
 import com.bauhaus.livingbrushbackendapi.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +17,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * VR QR 로그인 전용 인증 서비스
@@ -36,6 +41,11 @@ public class VrAuthService {
     private final QrService qrService;
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
+    private final FileStorageService fileStorageService;
+
+    // Redis 연결 실패 시 대체용 메모리 저장소
+    private final Map<String, String> memoryTokenStore = new ConcurrentHashMap<>();
+    private final Map<String, LocalDateTime> memoryTokenExpiry = new ConcurrentHashMap<>();
 
     /**
      * VR 로그인용 QR 코드 및 수동 코드 생성 (5분 유효)
@@ -62,16 +72,28 @@ public class VrAuthService {
             String redisManualKey = "vr_manual:" + manualCode;
 
             // 3. Redis에 5분 TTL로 사용자 ID 저장 (UUID 토큰과 수동 코드 둘 다)
-            redisTemplate.opsForValue().set(redisKey, userId.toString(), Duration.ofMinutes(5));
-            redisTemplate.opsForValue().set(redisManualKey, userId.toString(), Duration.ofMinutes(5));
-            log.info("VR 토큰 Redis 저장 완료 - QR Key: {}, Manual Key: {}, UserId: {}, TTL: 5분",
-                    redisKey, redisManualKey, userId);
+            try {
+                redisTemplate.opsForValue().set(redisKey, userId.toString(), Duration.ofMinutes(5));
+                redisTemplate.opsForValue().set(redisManualKey, userId.toString(), Duration.ofMinutes(5));
+                log.info("VR 토큰 Redis 저장 완료 - QR Key: {}, Manual Key: {}, UserId: {}, TTL: 5분",
+                        redisKey, redisManualKey, userId);
+            } catch (Exception e) {
+                log.warn("Redis 저장 실패, 메모리 기반으로 대체 - UserId: {}, Error: {}", userId, e.getMessage());
+                // Redis 실패 시 메모리 기반으로 대체 (개발/테스트용)
+                LocalDateTime expiry = LocalDateTime.now().plusMinutes(5);
+                memoryTokenStore.put(redisKey, userId.toString());
+                memoryTokenStore.put(redisManualKey, userId.toString());
+                memoryTokenExpiry.put(redisKey, expiry);
+                memoryTokenExpiry.put(redisManualKey, expiry);
+                log.info("메모리 기반 토큰 저장 완료 - QR Key: {}, Manual Key: {}, UserId: {}, Expiry: {}",
+                        redisKey, redisManualKey, userId, expiry);
+            }
 
             // 4. QR 코드 데이터 생성 (VR 앱에서 인식할 수 있는 형태)
             String qrData = createVrLoginQrData(vrLoginToken);
 
             // 5. QR 이미지 생성 (기존 QR 서비스 활용)
-            String qrImageUrl = generateQrImage(qrData);
+            String qrImageUrl = generateQrImage(qrData, userId);
 
             // 6. 응답 생성 (QR + 수동 코드 포함)
             VrLoginQrResponse response = VrLoginQrResponse.of(qrImageUrl, vrLoginToken, manualCode);
@@ -106,15 +128,33 @@ public class VrAuthService {
             String redisKey = "vr_login:" + vrLoginToken;
 
             // 1. Redis에서 사용자 ID 조회
-            String userIdStr = redisTemplate.opsForValue().get(redisKey);
+            String userIdStr = null;
+            try {
+                userIdStr = redisTemplate.opsForValue().get(redisKey);
+            } catch (Exception e) {
+                log.warn("Redis 조회 실패, 메모리 기반으로 대체 - Token: {}, Error: {}", vrLoginToken, e.getMessage());
+            }
+
+            // Redis 실패 시 메모리에서 조회
             if (userIdStr == null) {
-                log.warn("VR 토큰을 찾을 수 없음 - Token: {}", vrLoginToken);
-                throw new CustomException(ErrorCode.VR_LOGIN_TOKEN_NOT_FOUND);
+                userIdStr = getFromMemoryStore(redisKey);
+                if (userIdStr == null) {
+                    log.warn("VR 토큰을 찾을 수 없음 - Token: {}", vrLoginToken);
+                    throw new CustomException(ErrorCode.VR_LOGIN_TOKEN_NOT_FOUND);
+                }
             }
 
             // 2. 토큰 즉시 삭제 (일회용 보장)
-            Boolean deleted = redisTemplate.delete(redisKey);
-            if (!Boolean.TRUE.equals(deleted)) {
+            boolean deleted = false;
+            try {
+                Boolean redisDeleted = redisTemplate.delete(redisKey);
+                deleted = Boolean.TRUE.equals(redisDeleted);
+            } catch (Exception e) {
+                log.warn("Redis 삭제 실패, 메모리에서 삭제 - Token: {}, Error: {}", vrLoginToken, e.getMessage());
+                deleted = removeFromMemoryStore(redisKey);
+            }
+
+            if (!deleted) {
                 log.warn("VR 토큰 삭제 실패 - Token: {} (이미 사용됨)", vrLoginToken);
                 throw new CustomException(ErrorCode.VR_LOGIN_TOKEN_ALREADY_USED);
             }
@@ -153,15 +193,33 @@ public class VrAuthService {
             String redisManualKey = "vr_manual:" + manualCode;
 
             // 1. Redis에서 사용자 ID 조회
-            String userIdStr = redisTemplate.opsForValue().get(redisManualKey);
+            String userIdStr = null;
+            try {
+                userIdStr = redisTemplate.opsForValue().get(redisManualKey);
+            } catch (Exception e) {
+                log.warn("Redis 조회 실패, 메모리 기반으로 대체 - Code: {}, Error: {}", manualCode, e.getMessage());
+            }
+
+            // Redis 실패 시 메모리에서 조회
             if (userIdStr == null) {
-                log.warn("VR 수동 코드를 찾을 수 없음 - Code: {}", manualCode);
-                throw new CustomException(ErrorCode.VR_LOGIN_TOKEN_NOT_FOUND);
+                userIdStr = getFromMemoryStore(redisManualKey);
+                if (userIdStr == null) {
+                    log.warn("VR 수동 코드를 찾을 수 없음 - Code: {}", manualCode);
+                    throw new CustomException(ErrorCode.VR_LOGIN_TOKEN_NOT_FOUND);
+                }
             }
 
             // 2. 코드 즉시 삭제 (일회용 보장)
-            Boolean deleted = redisTemplate.delete(redisManualKey);
-            if (!Boolean.TRUE.equals(deleted)) {
+            boolean deleted = false;
+            try {
+                Boolean redisDeleted = redisTemplate.delete(redisManualKey);
+                deleted = Boolean.TRUE.equals(redisDeleted);
+            } catch (Exception e) {
+                log.warn("Redis 삭제 실패, 메모리에서 삭제 - Code: {}, Error: {}", manualCode, e.getMessage());
+                deleted = removeFromMemoryStore(redisManualKey);
+            }
+
+            if (!deleted) {
                 log.warn("VR 수동 코드 삭제 실패 - Code: {} (이미 사용됨)", manualCode);
                 throw new CustomException(ErrorCode.VR_LOGIN_TOKEN_ALREADY_USED);
             }
@@ -226,18 +284,30 @@ public class VrAuthService {
      * QR 이미지 생성
      *
      * @param qrData QR 코드에 포함될 데이터
+     * @param userId 사용자 ID (S3 폴더 구조용)
      * @return 생성된 QR 이미지 URL
      * @throws CustomException QR 이미지 생성에 실패한 경우
      */
-    private String generateQrImage(String qrData) {
+    private String generateQrImage(String qrData, Long userId) {
         try {
-            log.info("QR 이미지 생성 요청 - Data: {}", qrData);
+            log.info("QR 이미지 생성 요청 - Data: {}, UserId: {}", qrData, userId);
 
-            // 실제 구현에서는 QrService.generateQrImage(qrData) 호출
-            return "https://temp-qr-url.com/" + UUID.randomUUID() + ".png";
+            // QrService를 사용하여 QR 이미지 바이트 데이터 생성
+            byte[] qrImageData = qrService.generateQrImageBytes(qrData);
+
+            // 파일명 생성 (UUID 기반)
+            String fileName = "vr-login-" + UUID.randomUUID().toString().substring(0, 8) + ".png";
+
+            // S3에 저장 (pairing-qr/user-{userId}/ 폴더에 저장)
+            FileStorageContext context = FileStorageContext.forPairingQr(userId);
+
+            String qrImageUrl = fileStorageService.saveWithContext(qrImageData, fileName, context);
+
+            log.info("VR QR 이미지 S3 저장 완료 - URL: {}", qrImageUrl);
+            return qrImageUrl;
 
         } catch (Exception e) {
-            log.error("VR QR 이미지 생성 실패 - Data: {}", qrData, e);
+            log.error("VR QR 이미지 생성 실패 - Data: {}, UserId: {}", qrData, userId, e);
             throw new CustomException(ErrorCode.VR_QR_GENERATION_FAILED, e);
         }
     }
@@ -255,46 +325,70 @@ public class VrAuthService {
         // 실제 랜덤 코드와 동시에 유지
         return "9999"; // AI 개발자 전용 테스트 코드
     }
-    
+
     /**
      * AI 개발자 전용 영구 테스트 코드 생성
-     * 
+     *
      * 5분 제한 없이 항상 사용 가능한 테스트 코드를 생성합니다.
-     * 
+     *
      * @param userId 테스트할 사용자 ID
      * @return 항상 사용 가능한 테스트 응답
      */
     @Transactional
     public VrLoginQrResponse generatePermanentTestCode(Long userId) {
         log.info("AI 개발자 영구 테스트 코드 생성 - User ID: {}", userId);
-        
+
         try {
             // 사용자 존재 확인
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-            
+
             // 영구 테스트 코드들
             String permanentToken = "ai-test-token-permanent";
             String permanentCode = "8888";
-            
+
             // Redis에 영구 저장 (TTL 없음)
             String redisKey = "vr_login:" + permanentToken;
             String redisManualKey = "vr_manual:" + permanentCode;
-            
+
             redisTemplate.opsForValue().set(redisKey, userId.toString());
             redisTemplate.opsForValue().set(redisManualKey, userId.toString());
-            
+
             // 고정 QR 데이터
             String qrData = "bauhaus://vr-login?token=" + permanentToken;
             String qrImageUrl = "https://temp-qr-url.com/ai-test-permanent.png";
-            
+
             log.info("AI 개발자 영구 테스트 코드 생성 완료 - Token: {}, Code: {}", permanentToken, permanentCode);
-            
+
             return VrLoginQrResponse.of(qrImageUrl, permanentToken, permanentCode);
-            
+
         } catch (Exception e) {
             log.error("AI 개발자 테스트 코드 생성 실패", e);
             throw new CustomException(ErrorCode.VR_QR_GENERATION_FAILED, e);
         }
+    }
+
+    /**
+     * 메모리 저장소에서 토큰/코드에 해당하는 사용자 ID를 조회합니다.
+     */
+    private String getFromMemoryStore(String key) {
+        LocalDateTime expiry = memoryTokenExpiry.get(key);
+        if (expiry != null && LocalDateTime.now().isBefore(expiry)) {
+            return memoryTokenStore.get(key);
+        } else if (expiry != null) {
+            // 만료된 토큰 정리
+            memoryTokenStore.remove(key);
+            memoryTokenExpiry.remove(key);
+        }
+        return null;
+    }
+
+    /**
+     * 메모리 저장소에서 토큰/코드를 삭제합니다.
+     */
+    private boolean removeFromMemoryStore(String key) {
+        String removed = memoryTokenStore.remove(key);
+        memoryTokenExpiry.remove(key);
+        return removed != null;
     }
 }

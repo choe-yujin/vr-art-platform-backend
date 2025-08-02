@@ -24,4 +24,13 @@ public interface QrService {
      *                         또는 QR 생성 중 내부 오류가 발생한 경우.
      */
     QrGenerateResponse generateQr(Long artworkId);
+
+    /**
+     * QR 코드 이미지의 바이트 데이터를 생성합니다.
+     *
+     * @param qrData QR 코드에 포함될 데이터
+     * @return QR 이미지의 바이트 배열
+     * @throws CustomException QR 생성 중 내부 오류가 발생한 경우
+     */
+    byte[] generateQrImageBytes(String qrData);
 }
