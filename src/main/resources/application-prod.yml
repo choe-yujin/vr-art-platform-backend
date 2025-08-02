@@ -40,11 +40,10 @@ spring:
 
   # Redis Configuration (VR 로그인 토큰 관리)
   redis:
-    client:
-      host: ${REDIS_HOST:redis}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
-    timeout: 2000ms
+    host: ${REDIS_HOST:redis}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    timeout: 2000ms # timeout도 같은 레벨로 맞춥니다.
     lettuce:
       pool:
         max-active: 10
