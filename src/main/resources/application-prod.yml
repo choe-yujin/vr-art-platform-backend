@@ -40,9 +40,10 @@ spring:
 
   # Redis Configuration (VR 로그인 토큰 관리)
   redis:
-    host: ${REDIS_HOST:localhost}
-    port: ${REDIS_PORT:6379}
-    password: ${REDIS_PASSWORD:}
+    client:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
     timeout: 2000ms
     lettuce:
       pool:
@@ -50,6 +51,7 @@ spring:
         max-idle: 8
         min-idle: 2
         max-wait: -1ms
+
 
   security:
     oauth2:
