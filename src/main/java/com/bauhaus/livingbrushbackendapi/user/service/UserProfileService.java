@@ -143,8 +143,9 @@ public class UserProfileService {
                 followRepository.existsByFollowerIdAndFollowingId(currentUserId, targetUserId) : null;
 
         int publicArtworkCount = getPublicArtworkCount(targetUserId);
+        int totalViewCount = getTotalViewCount(targetUserId);
 
-        return PublicUserProfileResponse.from(targetUser, profile, isFollowing, publicArtworkCount);
+        return PublicUserProfileResponse.from(targetUser, profile, isFollowing, publicArtworkCount, totalViewCount);
     }
 
     /**

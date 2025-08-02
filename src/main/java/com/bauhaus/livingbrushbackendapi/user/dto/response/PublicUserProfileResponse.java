@@ -78,11 +78,16 @@ public class PublicUserProfileResponse {
      */
     private int publicArtworkCount;
 
+    /**
+     * 총 조회수 (모든 작품의 조회수 합계)
+     */
+    private int totalViewCount;
+
     @Builder
     private PublicUserProfileResponse(Long userId, String nickname, String profileImageUrl,
                                     String bio, int followerCount, int followingCount, String role,
                                     LocalDateTime joinDate, LocalDateTime artistQualifiedAt,
-                                    Boolean isFollowing, int publicArtworkCount) {
+                                    Boolean isFollowing, int publicArtworkCount, int totalViewCount) {
         this.userId = userId;
         this.nickname = nickname;
         this.profileImageUrl = profileImageUrl;
@@ -94,6 +99,7 @@ public class PublicUserProfileResponse {
         this.artistQualifiedAt = artistQualifiedAt;
         this.isFollowing = isFollowing;
         this.publicArtworkCount = publicArtworkCount;
+        this.totalViewCount = totalViewCount;
     }
 
     /**
@@ -103,10 +109,11 @@ public class PublicUserProfileResponse {
      * @param userProfile UserProfile 엔티티 (null 가능)
      * @param isFollowing 현재 사용자가 이 사용자를 팔로우하고 있는지 여부 (null: 비회원, true: 팔로잉, false: 미팔로우)
      * @param publicArtworkCount 공개 작품 수
+     * @param totalViewCount 총 조회수
      * @return PublicUserProfileResponse 객체
      */
     public static PublicUserProfileResponse from(User user, UserProfile userProfile, 
-                                                Boolean isFollowing, int publicArtworkCount) {
+                                                Boolean isFollowing, int publicArtworkCount, int totalViewCount) {
         return PublicUserProfileResponse.builder()
                 .userId(user.getUserId())
                 .nickname(user.getNickname())
@@ -119,6 +126,7 @@ public class PublicUserProfileResponse {
                 .artistQualifiedAt(user.getArtistQualifiedAt())
                 .isFollowing(isFollowing)
                 .publicArtworkCount(publicArtworkCount)
+                .totalViewCount(totalViewCount)
                 .build();
     }
 
@@ -128,9 +136,10 @@ public class PublicUserProfileResponse {
      * @param user User 엔티티
      * @param isFollowing 현재 사용자가 이 사용자를 팔로우하고 있는지 여부 (null: 비회원, true: 팔로잉, false: 미팔로우)
      * @param publicArtworkCount 공개 작품 수
+     * @param totalViewCount 총 조회수
      * @return PublicUserProfileResponse 객체 (기본값 포함)
      */
-    public static PublicUserProfileResponse fromUserOnly(User user, Boolean isFollowing, int publicArtworkCount) {
+    public static PublicUserProfileResponse fromUserOnly(User user, Boolean isFollowing, int publicArtworkCount, int totalViewCount) {
         return PublicUserProfileResponse.builder()
                 .userId(user.getUserId())
                 .nickname(user.getNickname())
@@ -143,6 +152,22 @@ public class PublicUserProfileResponse {
                 .artistQualifiedAt(user.getArtistQualifiedAt())
                 .isFollowing(isFollowing)
                 .publicArtworkCount(publicArtworkCount)
+                .totalViewCount(totalViewCount)
                 .build();
+    }
+
+    /**
+     * 하위 호환성을 위한 메서드 (totalViewCount = 0)
+     */
+    public static PublicUserProfileResponse fromUserOnly(User user, Boolean isFollowing, int publicArtworkCount) {
+        return fromUserOnly(user, isFollowing, publicArtworkCount, 0);
+    }
+
+    /**
+     * 하위 호환성을 위한 메서드 (totalViewCount = 0)
+     */
+    public static PublicUserProfileResponse from(User user, UserProfile userProfile, 
+                                                Boolean isFollowing, int publicArtworkCount) {
+        return from(user, userProfile, isFollowing, publicArtworkCount, 0);
     }
 }
