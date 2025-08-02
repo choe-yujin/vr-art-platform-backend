@@ -40,10 +40,6 @@ spring:
 
   # Redis Configuration (VR 로그인 토큰 관리)
   redis:
-    host: ${REDIS_HOST:redis}
-    port: ${REDIS_PORT:6379}
-    password: ${REDIS_PASSWORD:}
-    timeout: 2000ms # timeout도 같은 레벨로 맞춥니다.
     lettuce:
       pool:
         max-active: 10
@@ -68,6 +64,12 @@ spring:
             token-uri: https://graph.facebook.com/v18.0/oauth/access_token
             user-info-uri: https://graph.facebook.com/me?fields=id,name,email,picture
             user-name-attribute: id
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
 
 cloud:
   aws:
