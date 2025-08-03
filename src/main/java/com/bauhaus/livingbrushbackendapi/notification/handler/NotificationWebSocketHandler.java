@@ -30,9 +30,11 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        log.info("WebSocket 연결 시도: {}", session.getUri());
+        log.info("=== WebSocket 연결 시도 시작 ===");
+        log.info("WebSocket 연결 시도: URI={}", session.getUri());
         log.info("WebSocket 세션 정보: remoteAddress={}, localAddress={}",
                 session.getRemoteAddress(), session.getLocalAddress());
+        log.info("WebSocket 헤더: {}", session.getHandshakeHeaders());
 
         try {
             Long userId = getUserIdFromSession(session);
