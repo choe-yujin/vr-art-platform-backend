@@ -7,6 +7,7 @@ import com.bauhaus.livingbrushbackendapi.artwork.dto.ArtworkResponse;
 import com.bauhaus.livingbrushbackendapi.artwork.dto.ArtworkUpdateRequest;
 import com.bauhaus.livingbrushbackendapi.artwork.service.ArtworkService;
 import com.bauhaus.livingbrushbackendapi.security.UserPrincipal;
+import com.bauhaus.livingbrushbackendapi.security.jwt.JwtTokenProvider;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -18,6 +19,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -45,6 +47,7 @@ import java.util.List;
 public class ArtworkController {
 
     private final ArtworkService artworkService;
+    private final JwtTokenProvider jwtTokenProvider;
 
     // ====================================================================
     // ✨ 작품 생성 API (시나리오 1&2 지원)
@@ -64,7 +67,7 @@ public class ArtworkController {
             @Parameter(description = "커스텀 제목 (선택사항)") @RequestParam(required = false) String customTitle,
             @Parameter(description = "커스텀 설명 (선택사항)") @RequestParam(required = false) String customDescription
     ) {
-        log.info("VR 작품 업로드 요청 - 사용자: {}, 파일: {}, 태그 수: {}", 
+        log.info("VR 작품 업로드 요청 - 사용자: {}, 파일: {}, 태그 수: {}",
                 userId, glbFile.getOriginalFilename(), tagIds != null ? tagIds.size() : 0);
 
         // VR 요청 DTO 생성
@@ -217,7 +220,7 @@ public class ArtworkController {
             @Parameter(description = "요청자 사용자 ID (비회원인 경우 null)", hidden = true)
             @org.springframework.security.core.annotation.AuthenticationPrincipal(errorOnInvalidType = false) Long requestUserId
     ) {
-        log.info("작품 상세 조회 요청 - 작품 ID: {}, 요청자 ID: {}", artworkId, 
+        log.info("작품 상세 조회 요청 - 작품 ID: {}, 요청자 ID: {}", artworkId,
                 requestUserId != null ? requestUserId : "비회원");
 
         ArtworkResponse response = artworkService.getArtworkById(artworkId, requestUserId);
@@ -232,11 +235,14 @@ public class ArtworkController {
     @GetMapping("/user/{userId}")
     public ResponseEntity<Page<ArtworkListResponse>> getMyArtworks(
             @Parameter(description = "사용자 ID", required = true) @PathVariable Long userId,
-            @Parameter(description = "요청자 사용자 ID", required = true) @RequestHeader("X-User-Id") Long requestUserId,
             @Parameter(description = "페이지 번호 (0부터 시작)", example = "0") @RequestParam(defaultValue = "0") int page,
-            @Parameter(description = "페이지 크기", example = "20") @RequestParam(defaultValue = "20") int size
+            @Parameter(description = "페이지 크기", example = "20") @RequestParam(defaultValue = "20") int size,
+            Authentication authentication
     ) {
         log.info("내 작품 목록 조회 요청 - 사용자 ID: {}", userId);
+
+        // JWT 토큰에서 사용자 ID 추출
+        Long requestUserId = jwtTokenProvider.getUserIdFromAuthentication(authentication);
 
         Page<ArtworkListResponse> response = artworkService.getMyArtworks(userId, requestUserId, page, size);
         return ResponseEntity.ok(response);
@@ -263,7 +269,7 @@ public class ArtworkController {
     @Operation(
             summary = "공개 작품 갤러리 조회",
             description = "공개 작품들을 정렬 옵션에 따라 페이징으로 조회합니다. (latest, popular, views)\n" +
-                         "로그인한 사용자인 경우 좋아요/즐겨찾기 상태가 포함되며, 비회원도 접근 가능합니다."
+                    "로그인한 사용자인 경우 좋아요/즐겨찾기 상태가 포함되며, 비회원도 접근 가능합니다."
     )
     @GetMapping("/public")
     public ResponseEntity<Page<ArtworkListResponse>> getPublicArtworks(
@@ -274,7 +280,7 @@ public class ArtworkController {
             @Parameter(description = "요청자 사용자 ID (비회원인 경우 null)", hidden = true)
             @org.springframework.security.core.annotation.AuthenticationPrincipal(errorOnInvalidType = false) Long requestUserId
     ) {
-        log.info("공개 작품 갤러리 조회 요청 - 정렬: {}, 요청자: {}", sortBy, 
+        log.info("공개 작품 갤러리 조회 요청 - 정렬: {}, 요청자: {}", sortBy,
                 requestUserId != null ? requestUserId : "비회원");
 
         Page<ArtworkListResponse> response = artworkService.getPublicArtworks(sortBy, page, size, requestUserId);
