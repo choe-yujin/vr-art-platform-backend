@@ -2,9 +2,6 @@ package com.bauhaus.livingbrushbackendapi.notification.controller;
 
 import com.bauhaus.livingbrushbackendapi.notification.dto.NotificationDTO;
 import com.bauhaus.livingbrushbackendapi.notification.service.NotificationService;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -13,56 +10,74 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * 알림 API 컨트롤러
- * 
- * WebSocket 실시간 알림과 연동하여 알림 목록 조회, 읽음 처리 기능 제공
+ * 알림 REST API 컨트롤러
  */
+@Slf4j
 @RestController
 @RequestMapping("/api/notifications")
 @RequiredArgsConstructor
-@Slf4j
-@Tag(name = "Notification", description = "알림 API - WebSocket 연동")
 public class NotificationController {
 
     private final NotificationService notificationService;
 
     /**
-     * 사용자의 미읽음 알림 목록 조회
+     * 미읽음 알림 목록 조회
      */
     @GetMapping("/unread")
-    @Operation(summary = "미읽음 알림 목록 조회", description = "현재 사용자의 읽지 않은 알림 목록을 최신순으로 조회합니다.")
     public ResponseEntity<List<NotificationDTO>> getUnreadNotifications(
-            @Parameter(description = "사용자 ID", example = "1") 
-            @RequestHeader("User-Id") Long userId) {
-        
-        log.info("미읽음 알림 조회: userId={}", userId);
-        List<NotificationDTO> notifications = notificationService.getUnreadNotifications(userId);
-        return ResponseEntity.ok(notifications);
+            @RequestParam Long userId
+    ) {
+        log.info("미읽음 알림 조회 요청: userId={}", userId);
+
+        try {
+            List<NotificationDTO> notifications = notificationService.getUnreadNotifications(userId);
+            log.info("미읽음 알림 조회 완료: userId={}, count={}", userId, notifications.size());
+
+            return ResponseEntity.ok(notifications);
+        } catch (Exception e) {
+            log.error("미읽음 알림 조회 실패: userId={}", userId, e);
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
     /**
      * 알림 읽음 처리
      */
-    @PatchMapping("/{notificationId}/read")
-    @Operation(summary = "알림 읽음 처리", description = "특정 알림을 읽음 상태로 변경합니다.")
-    public ResponseEntity<Void> markAsRead(
-            @Parameter(description = "알림 ID", example = "1") 
-            @PathVariable Long notificationId,
-            @Parameter(description = "사용자 ID", example = "1") 
-            @RequestHeader("User-Id") Long userId) {
-        
-        log.info("알림 읽음 처리: notificationId={}, userId={}", notificationId, userId);
-        notificationService.markNotificationAsRead(notificationId);
-        return ResponseEntity.ok().build();
+    @PutMapping("/{notificationId}/read")
+    public ResponseEntity<Void> markNotificationAsRead(
+            @PathVariable Long notificationId
+    ) {
+        log.info("알림 읽음 처리 요청: notificationId={}", notificationId);
+
+        try {
+            notificationService.markNotificationAsRead(notificationId);
+            log.info("알림 읽음 처리 완료: notificationId={}", notificationId);
+
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            log.error("알림 읽음 처리 실패: notificationId={}", notificationId, e);
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
     /**
-     * WebSocket 연결 상태 확인 (디버깅용)
+     * 테스트용 팔로우 알림 전송
      */
-    @GetMapping("/websocket/status")
-    @Operation(summary = "WebSocket 연결 상태 확인", description = "현재 WebSocket에 연결된 사용자 수를 확인합니다.")
-    public ResponseEntity<String> getWebSocketStatus() {
-        int connectedUsers = com.bauhaus.livingbrushbackendapi.notification.handler.NotificationWebSocketHandler.getConnectedUserCount();
-        return ResponseEntity.ok("WebSocket 연결된 사용자 수: " + connectedUsers);
+    @PostMapping("/test/follow")
+    public ResponseEntity<Void> sendTestFollowNotification(
+            @RequestParam Long targetUserId,
+            @RequestParam Long followerUserId,
+            @RequestParam String followerNickname
+    ) {
+        log.info("테스트 팔로우 알림 전송: targetUserId={}, followerUserId={}, followerNickname={}",
+                targetUserId, followerUserId, followerNickname);
+
+        try {
+            notificationService.sendFollowNotification(targetUserId, followerUserId, followerNickname);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            log.error("테스트 팔로우 알림 전송 실패", e);
+            return ResponseEntity.internalServerError().build();
+        }
     }
 }
