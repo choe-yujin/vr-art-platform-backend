@@ -46,6 +46,10 @@ spring:
         max-idle: 8
         min-idle: 2
         max-wait: -1ms
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    time-zone: Asia/Seoul
 
   security:
     oauth2:
