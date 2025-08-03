@@ -11,13 +11,17 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 @EnableWebSocket
 @RequiredArgsConstructor
 public class WebSocketConfig implements WebSocketConfigurer {
-    
+
     private final NotificationWebSocketHandler notificationHandler;
-    
+
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry.addHandler(notificationHandler, "/notifications")
-                .setAllowedOrigins("*") // 개발용, 프로덕션에서는 도메인 지정
-                .withSockJS(); // SockJS 지원으로 호환성 향상
+                .setAllowedOrigins(
+                        "https://api.livingbrush.shop",
+                        "https://livingbrush.shop",
+                        "http://localhost:3000", // 개발용
+                        "http://localhost:8080"  // 개발용
+                );
     }
 }
