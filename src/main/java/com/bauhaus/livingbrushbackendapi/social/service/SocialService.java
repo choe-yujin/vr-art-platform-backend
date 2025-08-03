@@ -54,7 +54,7 @@ public class SocialService {
     /**
      * 작품 좋아요 토글
      * 이미 좋아요를 누른 경우 취소, 누르지 않은 경우 추가
-     * 
+     *
      * 🎯 v2.0 개선사항:
      * - 실제 favoriteCount를 응답에 포함하여 안드로이드 동기화 완성
      */
@@ -74,22 +74,38 @@ public class SocialService {
                 log.warn("좋아요 취소 시도했으나 해당 레코드를 찾지 못함: userId={}, artworkId={}", userId, artworkId);
             }
             artwork.decrementFavoriteCount();
-            
+
             // 🎯 실제 favoriteCount 전달
             long currentFavoriteCount = artwork.getFavoriteCount();
             log.info("좋아요 취소 완료: userId={}, artworkId={}, favoriteCount={}", userId, artworkId, currentFavoriteCount);
-            
+
             return LikeToggleResponse.canceled(artworkId, currentFavoriteCount);
         } else {
             // 좋아요 추가
             Like like = new Like(userId, artworkId);
             likeRepository.save(like);
             artwork.incrementFavoriteCount();
-            
+
             // 🎯 실제 favoriteCount 전달
             long currentFavoriteCount = artwork.getFavoriteCount();
             log.info("좋아요 추가 완료: userId={}, artworkId={}, favoriteCount={}", userId, artworkId, currentFavoriteCount);
-            
+
+            // 🎯 좋아요 알림 전송 (작품 소유자에게)
+            try {
+                User liker = userRepository.findById(userId).orElse(null);
+                if (liker != null && !artwork.getUserId().equals(userId)) { // 자기 자신의 작품에는 알림 안 보내기
+                    notificationService.sendLikeNotification(
+                            artwork.getUserId(), // 작품 소유자
+                            userId, // 좋아요한 사용자
+                            liker.getNickname(), // 좋아요한 사용자 닉네임
+                            artworkId, // 작품 ID
+                            artwork.getTitle() // 작품 제목
+                    );
+                }
+            } catch (Exception e) {
+                log.error("좋아요 알림 전송 실패", e);
+            }
+
             return LikeToggleResponse.added(artworkId, currentFavoriteCount);
         }
     }
@@ -121,7 +137,7 @@ public class SocialService {
                 userId, artworkId, content != null ? content.length() : 0);
 
         User user = validateUserExists(userId);
-        validateArtworkExists(artworkId);
+        Artwork artwork = validateArtworkExists(artworkId);
 
         Comment comment = new Comment(artworkId, userId, content);
         Comment savedComment = commentRepository.save(comment);
@@ -131,6 +147,22 @@ public class SocialService {
 
         log.info("댓글 작성 완료: commentId={}, userId={}, artworkId={}",
                 savedComment.getCommentId(), userId, artworkId);
+
+        // 🎯 댓글 알림 전송 (작품 소유자에게)
+        try {
+            if (!artwork.getUserId().equals(userId)) { // 자기 자신의 작품에는 알림 안 보내기
+                notificationService.sendCommentNotification(
+                        artwork.getUserId(), // 작품 소유자
+                        userId, // 댓글 작성자
+                        user.getNickname(), // 댓글 작성자 닉네임
+                        artworkId, // 작품 ID
+                        artwork.getTitle(), // 작품 제목
+                        content // 댓글 내용
+                );
+            }
+        } catch (Exception e) {
+            log.error("댓글 알림 전송 실패", e);
+        }
 
         // [수정] CommentResponse 생성자에 프로필 이미지 URL 포함
         String profileImageUrl = user.getProfileImageUrl();
@@ -149,7 +181,7 @@ public class SocialService {
      */
     public CommentListResponse getComments(Long artworkId, Pageable pageable, Long currentUserId) {
         log.info("댓글 목록 조회: artworkId={}, page={}, size={}, currentUserId={}",
-                artworkId, pageable.getPageNumber(), pageable.getPageSize(), 
+                artworkId, pageable.getPageNumber(), pageable.getPageSize(),
                 currentUserId != null ? currentUserId : "게스트");
 
         validateArtworkExists(artworkId);

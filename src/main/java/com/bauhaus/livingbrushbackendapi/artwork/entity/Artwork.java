@@ -179,6 +179,13 @@ public class Artwork extends BaseEntity {
         return Objects.equals(this.user.getUserId(), user.getUserId());
     }
 
+    /**
+     * 작품 소유자의 사용자 ID 반환
+     */
+    public Long getUserId() {
+        return this.user.getUserId();
+    }
+
     // --- 상태 조회 비즈니스 로직 ---
 
     public boolean isPublic() {

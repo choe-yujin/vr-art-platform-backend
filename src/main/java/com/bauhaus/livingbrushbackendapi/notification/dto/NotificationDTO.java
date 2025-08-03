@@ -7,6 +7,15 @@ import lombok.Data;
 
 import java.time.LocalDateTime;
 
+/**
+ * 알림 타입 상수
+ */
+class NotificationType {
+    public static final String NEW_FOLLOWER = "new_follower";
+    public static final String NEW_LIKE = "new_like";
+    public static final String NEW_COMMENT = "new_comment";
+}
+
 @Data
 @Builder
 public class NotificationDTO {
