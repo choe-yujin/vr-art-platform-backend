@@ -17,6 +17,7 @@ import com.bauhaus.livingbrushbackendapi.user.entity.User;
 import com.bauhaus.livingbrushbackendapi.user.repository.FollowRepository;
 import com.bauhaus.livingbrushbackendapi.user.repository.UserRepository;
 import com.bauhaus.livingbrushbackendapi.user.service.UserProfileService;
+import com.bauhaus.livingbrushbackendapi.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -46,6 +47,7 @@ public class SocialService {
     private final UserRepository userRepository;
     private final ArtworkRepository artworkRepository;
     private final UserProfileService userProfileService;
+    private final NotificationService notificationService;
 
     // ========== 좋아요 기능 ==========
 
@@ -249,6 +251,9 @@ public class SocialService {
 
             int newFollowerCount = userProfileService.incrementFollowerCount(followingId);
             int newFollowingCount = userProfileService.incrementFollowingCount(followerId);
+
+            // 🔔 팔로우 알림 전송
+            notificationService.sendFollowNotification(followingId, followerId, follower.getNickname());
 
             log.info("팔로우 완료: followerId={}, followingId={}", followerId, followingId);
 

@@ -47,6 +47,9 @@ dependencies {
     
     // Redis (VR 로그인 토큰 관리)
     implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+    
+    // WebSocket for Real-time Notifications
+    implementation 'org.springframework.boot:spring-boot-starter-websocket'
 
     // JWT Token Processing
     implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
