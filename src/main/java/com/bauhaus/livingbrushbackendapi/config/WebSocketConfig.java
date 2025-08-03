@@ -16,13 +16,12 @@ public class WebSocketConfig implements WebSocketConfigurer {
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(notificationHandler, "/notifications")
+        registry.addHandler(notificationHandler, "/notifications/websocket")
                 .setAllowedOrigins(
                         "http://api.livingbrush.shop:8888",
                         "https://api.livingbrush.shop",
                         "http://localhost:3000", // 개발용
                         "http://localhost:8080"  // 개발용
-                )
-                .withSockJS(); // SockJS 지원 추가
+                );
     }
 }
