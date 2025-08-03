@@ -165,9 +165,11 @@ public class ArtworkController {
     @PutMapping("/{artworkId}")
     public ResponseEntity<ArtworkResponse> updateArtwork(
             @Parameter(description = "작품 ID", required = true) @PathVariable Long artworkId,
-            @Parameter(description = "사용자 ID", required = true) @RequestHeader("X-User-Id") Long userId,
-            @Parameter(description = "작품 수정 요청", required = true) @Valid @RequestBody ArtworkUpdateRequest request
+            @Parameter(description = "작품 수정 요청", required = true) @Valid @RequestBody ArtworkUpdateRequest request,
+            Authentication authentication
     ) {
+        // JWT 토큰에서 사용자 ID 추출
+        Long userId = jwtTokenProvider.getUserIdFromAuthentication(authentication);
         log.info("작품 정보 수정 요청 - 작품 ID: {}, 사용자 ID: {}", artworkId, userId);
 
         ArtworkResponse response = artworkService.updateArtwork(artworkId, request, userId);
@@ -182,8 +184,10 @@ public class ArtworkController {
     @PatchMapping("/{artworkId}/publish")
     public ResponseEntity<ArtworkResponse> publishArtwork(
             @Parameter(description = "작품 ID", required = true) @PathVariable Long artworkId,
-            @Parameter(description = "사용자 ID", required = true) @RequestHeader("X-User-Id") Long userId
+            Authentication authentication
     ) {
+        // JWT 토큰에서 사용자 ID 추출
+        Long userId = jwtTokenProvider.getUserIdFromAuthentication(authentication);
         log.info("작품 공개 요청 - 작품 ID: {}, 사용자 ID: {}", artworkId, userId);
 
         ArtworkResponse response = artworkService.publishArtwork(artworkId, userId);
@@ -198,8 +202,10 @@ public class ArtworkController {
     @PatchMapping("/{artworkId}/unpublish")
     public ResponseEntity<ArtworkResponse> unpublishArtwork(
             @Parameter(description = "작품 ID", required = true) @PathVariable Long artworkId,
-            @Parameter(description = "사용자 ID", required = true) @RequestHeader("X-User-Id") Long userId
+            Authentication authentication
     ) {
+        // JWT 토큰에서 사용자 ID 추출
+        Long userId = jwtTokenProvider.getUserIdFromAuthentication(authentication);
         log.info("작품 비공개 요청 - 작품 ID: {}, 사용자 ID: {}", artworkId, userId);
 
         ArtworkResponse response = artworkService.unpublishArtwork(artworkId, userId);
@@ -217,9 +223,10 @@ public class ArtworkController {
     @GetMapping("/{artworkId}")
     public ResponseEntity<ArtworkResponse> getArtwork(
             @Parameter(description = "작품 ID", required = true) @PathVariable Long artworkId,
-            @Parameter(description = "요청자 사용자 ID (비회원인 경우 null)", hidden = true)
-            @org.springframework.security.core.annotation.AuthenticationPrincipal(errorOnInvalidType = false) Long requestUserId
+            Authentication authentication
     ) {
+        // JWT 토큰에서 사용자 ID 추출
+        Long requestUserId = authentication != null ? jwtTokenProvider.getUserIdFromAuthentication(authentication) : null;
         log.info("작품 상세 조회 요청 - 작품 ID: {}, 요청자 ID: {}", artworkId,
                 requestUserId != null ? requestUserId : "비회원");
 

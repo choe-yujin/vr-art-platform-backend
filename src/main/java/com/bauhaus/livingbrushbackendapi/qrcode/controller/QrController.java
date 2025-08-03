@@ -5,6 +5,7 @@ import com.bauhaus.livingbrushbackendapi.artwork.dto.ArtworkResponse;
 import com.bauhaus.livingbrushbackendapi.qrcode.dto.QrGenerateResponse;
 import com.bauhaus.livingbrushbackendapi.qrcode.service.QrScanService;
 import com.bauhaus.livingbrushbackendapi.qrcode.service.QrService;
+import com.bauhaus.livingbrushbackendapi.security.jwt.JwtTokenProvider;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -12,6 +13,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
@@ -30,6 +32,7 @@ public class QrController {
 
     private final QrService qrService;
     private final QrScanService qrScanService; // 스캔/검증 책임을 가진 서비스
+    private final JwtTokenProvider jwtTokenProvider;
 
     /**
      * QR 코드 생성 API
@@ -40,15 +43,18 @@ public class QrController {
      * @return 생성된 QR 이미지의 URL을 포함한 응답
      */
     @Operation(
-        summary = "QR 코드 생성",
-        description = "공개 작품에 대해 WebAR 뷰어로 연결되는 QR 코드를 생성합니다.",
-        security = @SecurityRequirement(name = "JWT")
+            summary = "QR 코드 생성",
+            description = "공개 작품에 대해 WebAR 뷰어로 연결되는 QR 코드를 생성합니다.",
+            security = @SecurityRequirement(name = "JWT")
     )
     @PostMapping("/generate")
     public ResponseEntity<QrGenerateResponse> generateQr(
-            @Valid @RequestBody QrGenerateRequest request
+            @Valid @RequestBody QrGenerateRequest request,
+            Authentication authentication
     ) {
-        log.info("QR 생성 API 호출 - 작품 ID: {}", request.getArtworkId());
+        // JWT 토큰에서 사용자 ID 추출
+        Long userId = jwtTokenProvider.getUserIdFromAuthentication(authentication);
+        log.info("QR 생성 API 호출 - 작품 ID: {}, 사용자 ID: {}", request.getArtworkId(), userId);
         QrGenerateResponse response = qrService.generateQr(request.getArtworkId());
 
         // [수정] record의 접근자 메소드 이름은 get... 이 아닌 필드명과 동일합니다.
@@ -66,8 +72,8 @@ public class QrController {
      * @return 작품 정보를 포함한 응답 (ArtworkResponse)
      */
     @Operation(
-        summary = "QR 코드 스캔",
-        description = "QR 코드를 스캔하여 작품 정보를 조회합니다. 인증 불필요 (공개 접근)"
+            summary = "QR 코드 스캔",
+            description = "QR 코드를 스캔하여 작품 정보를 조회합니다. 인증 불필요 (공개 접근)"
     )
     @GetMapping("/scan/{qrToken}")
     public ResponseEntity<ArtworkResponse> scanQrCode(@PathVariable UUID qrToken) {
