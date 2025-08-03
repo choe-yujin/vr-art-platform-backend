@@ -10,6 +10,7 @@ import com.bauhaus.livingbrushbackendapi.storage.service.FileStorageContext;
 import com.bauhaus.livingbrushbackendapi.storage.service.FileStorageService;
 import com.bauhaus.livingbrushbackendapi.user.entity.User;
 import com.bauhaus.livingbrushbackendapi.user.repository.UserRepository;
+import com.bauhaus.livingbrushbackendapi.user.service.ConsentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -43,6 +44,7 @@ public class VrAuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
     private final FileStorageService fileStorageService;
+    private final ConsentService consentService;
 
     // Redis 연결 실패 시 대체용 메모리 저장소
     private final Map<String, String> memoryTokenStore = new ConcurrentHashMap<>();
@@ -257,10 +259,21 @@ public class VrAuthService {
             String accessToken = jwtTokenProvider.createVrAccessToken(userId, user.getRole());
             String refreshToken = jwtTokenProvider.createRefreshToken(userId);
 
-            // 4. 응답 생성
-            VrLoginResponse response = VrLoginResponse.of(accessToken, refreshToken, userId, user.getRole());
-            log.info("VR {} 로그인 성공 - User: {} (ID: {}), Role: {}",
-                    loginMethod, user.getNickname(), userId, user.getRole());
+            // 4. AI 기능 사용 가능 여부 확인
+            boolean aiFeaturesEnabled = consentService.canUseAiFeatures(userId);
+
+            // 5. 응답 생성 (닉네임과 AI 기능 사용 가능 여부 포함)
+            VrLoginResponse response = VrLoginResponse.of(
+                    accessToken,
+                    refreshToken,
+                    userId,
+                    user.getRole(),
+                    user.getNickname(),
+                    aiFeaturesEnabled
+            );
+
+            log.info("VR {} 로그인 성공 - User: {} (ID: {}), Role: {}, AI 기능 사용 가능: {}",
+                    loginMethod, user.getNickname(), userId, user.getRole(), aiFeaturesEnabled);
 
             return response;
 

@@ -12,6 +12,7 @@ import com.bauhaus.livingbrushbackendapi.user.entity.enumeration.Provider;
 import com.bauhaus.livingbrushbackendapi.exception.common.CustomException;
 import com.bauhaus.livingbrushbackendapi.exception.common.ErrorCode;
 import com.bauhaus.livingbrushbackendapi.security.jwt.JwtTokenProvider;
+import com.bauhaus.livingbrushbackendapi.user.service.ConsentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -34,6 +35,7 @@ public class AuthController {
     private final AuthService authService;
     private final VrAuthService vrAuthService;
     private final JwtTokenProvider jwtTokenProvider;
+    private final ConsentService consentService;
     // UserProfileService 주입이 필요합니다.
     // private final UserProfileService userProfileService;
 
@@ -97,8 +99,8 @@ public class AuthController {
     @PostMapping("/refresh")
     @Operation(summary = "JWT 토큰 갱신", description = "리프레시 토큰으로 새로운 액세스 토큰과 리프레시 토큰을 발급합니다.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "토큰 갱신 성공"),
-        @ApiResponse(responseCode = "401", description = "유효하지 않은 리프레시 토큰")
+            @ApiResponse(responseCode = "200", description = "토큰 갱신 성공"),
+            @ApiResponse(responseCode = "401", description = "유효하지 않은 리프레시 토큰")
     })
     public ResponseEntity<AuthResponse> refreshToken(@Valid @RequestBody TokenRefreshRequest request) {
         log.info("🔄 [토큰 갱신] 토큰 갱신 요청");
@@ -110,8 +112,8 @@ public class AuthController {
     @PostMapping("/token/refresh")
     @Operation(summary = "JWT 토큰 갱신 (호환성)", description = "안드로이드 호환성을 위한 대체 경로")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "토큰 갱신 성공"),
-        @ApiResponse(responseCode = "401", description = "유효하지 않은 리프레시 토큰")
+            @ApiResponse(responseCode = "200", description = "토큰 갱신 성공"),
+            @ApiResponse(responseCode = "401", description = "유효하지 않은 리프레시 토큰")
     })
     public ResponseEntity<AuthResponse> refreshTokenCompat(@Valid @RequestBody TokenRefreshRequest request) {
         log.info("🔄 [토큰 갱신-호환성] 토큰 갱신 요청 (/token/refresh 경로)");
@@ -148,8 +150,8 @@ public class AuthController {
     @GetMapping("/verify")
     @Operation(summary = "토큰 검증", description = "현재 액세스 토큰의 유효성을 검증합니다.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "토큰 유효"),
-        @ApiResponse(responseCode = "401", description = "토큰 무효 또는 만료")
+            @ApiResponse(responseCode = "200", description = "토큰 유효"),
+            @ApiResponse(responseCode = "401", description = "토큰 무효 또는 만료")
     })
     public ResponseEntity<String> verifyToken(Authentication authentication) {
         Long userId = jwtTokenProvider.getUserIdFromAuthentication(authentication);
