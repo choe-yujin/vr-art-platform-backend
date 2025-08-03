@@ -1,6 +1,7 @@
 package com.bauhaus.livingbrushbackendapi.notification.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Data;
 
@@ -16,9 +17,10 @@ public class NotificationDTO {
     private Long relatedId;
     private String relatedUserNickname;
     private String relatedUserProfileImage;
-    
+
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;
-    
+
+    @JsonProperty("isRead")
     private boolean isRead;
 }
