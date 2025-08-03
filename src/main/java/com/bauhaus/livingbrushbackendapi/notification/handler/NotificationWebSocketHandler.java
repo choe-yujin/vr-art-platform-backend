@@ -20,30 +20,37 @@ import java.util.concurrent.ConcurrentHashMap;
 @Component
 @RequiredArgsConstructor
 public class NotificationWebSocketHandler extends TextWebSocketHandler {
-    
+
     // 사용자별 WebSocket 세션 관리
     private static final ConcurrentHashMap<Long, WebSocketSession> userSessions = new ConcurrentHashMap<>();
-    
+
     private final RedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;
     private final NotificationService notificationService;
-    
+
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        Long userId = getUserIdFromSession(session);
-        
-        if (userId != null) {
-            userSessions.put(userId, session);
-            log.info("사용자 {} WebSocket 연결 성공", userId);
-            
-            // Redis에서 대기 중인 알림 즉시 전송
-            sendPendingNotifications(userId, session);
-        } else {
-            log.warn("WebSocket 연결 시 사용자 ID를 찾을 수 없음");
+        log.info("WebSocket 연결 시도: {}", session.getUri());
+
+        try {
+            Long userId = getUserIdFromSession(session);
+
+            if (userId != null) {
+                userSessions.put(userId, session);
+                log.info("사용자 {} WebSocket 연결 성공", userId);
+
+                // Redis에서 대기 중인 알림 즉시 전송
+                sendPendingNotifications(userId, session);
+            } else {
+                log.warn("WebSocket 연결 시 사용자 ID를 찾을 수 없음");
+                session.close();
+            }
+        } catch (Exception e) {
+            log.error("WebSocket 연결 처리 중 오류 발생", e);
             session.close();
         }
     }
-    
+
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
         Long userId = getUserIdFromSession(session);
@@ -52,13 +59,13 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
             log.info("사용자 {} WebSocket 연결 해제 - 상태: {}", userId, status);
         }
     }
-    
+
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         try {
             String payload = message.getPayload();
             JsonNode jsonNode = objectMapper.readTree(payload);
-            
+
             String type = jsonNode.get("type").asText();
             if ("read_notification".equals(type)) {
                 Long notificationId = jsonNode.get("notificationId").asLong();
@@ -72,7 +79,7 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
             log.error("WebSocket 메시지 처리 실패", e);
         }
     }
-    
+
     /**
      * 특정 사용자에게 실시간 알림 전송
      */
@@ -92,7 +99,7 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
         }
         return false;
     }
-    
+
     /**
      * Redis에서 대기 중인 알림들을 세션 연결 시 즉시 전송
      */
@@ -100,12 +107,12 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
         try {
             String queueKey = "notifications:queue:" + userId;
             List<String> pendingNotifications = redisTemplate.opsForList().range(queueKey, 0, -1);
-            
+
             if (pendingNotifications != null && !pendingNotifications.isEmpty()) {
                 for (String notification : pendingNotifications) {
                     session.sendMessage(new TextMessage(notification));
                 }
-                
+
                 // 전송 완료된 알림 Redis에서 제거
                 redisTemplate.delete(queueKey);
                 log.info("사용자 {}의 대기 알림 {} 개 전송 완료", userId, pendingNotifications.size());
@@ -114,24 +121,31 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
             log.error("대기 알림 전송 실패: 사용자 {}", userId, e);
         }
     }
-    
+
     /**
      * URL 쿼리에서 사용자 ID 추출
      * 예: ws://localhost:8080/notifications?userId=123
      */
     private Long getUserIdFromSession(WebSocketSession session) {
         try {
+            log.info("WebSocket 연결 시도: URI={}", session.getUri());
             String query = session.getUri().getQuery();
+            log.info("WebSocket 쿼리: {}", query);
+
             if (query != null && query.contains("userId=")) {
                 String userIdStr = query.split("userId=")[1].split("&")[0];
-                return Long.parseLong(userIdStr);
+                Long userId = Long.parseLong(userIdStr);
+                log.info("사용자 ID 추출 성공: {}", userId);
+                return userId;
+            } else {
+                log.warn("userId 파라미터가 없습니다. 쿼리: {}", query);
             }
         } catch (Exception e) {
             log.error("사용자 ID 추출 실패", e);
         }
         return null;
     }
-    
+
     /**
      * 알림 읽음 처리 (NotificationService와 연동)
      */
@@ -139,7 +153,7 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
         notificationService.markNotificationAsRead(notificationId);
         log.info("알림 {} 읽음 처리 완료", notificationId);
     }
-    
+
     /**
      * 현재 연결된 사용자 수 조회 (모니터링용)
      */

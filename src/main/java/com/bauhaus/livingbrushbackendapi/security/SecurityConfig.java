@@ -54,6 +54,9 @@ public class SecurityConfig {
             // --- Static Resources ---
             "/qr-images/**", // QR 코드 이미지 경로
 
+            // --- 🎯 WebSocket (인증 제외) ---
+            "/notifications", // WebSocket 알림 엔드포인트
+
             // --- 🎯 Public APIs (비회원도 접근 가능) ---
             "/api/artworks/*/view", // 조회수 증가 (POST)
             "/api/artworks/public", // 공개 작품 갤러리 (GET)
@@ -69,7 +72,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         log.info("🔧 SecurityFilterChain 설정 시작");
-        
+
         SecurityFilterChain filterChain = http
                 // 1. CORS 설정 적용
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -93,14 +96,14 @@ public class SecurityConfig {
                             .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/auth/**").permitAll()
                             .requestMatchers(org.springframework.http.HttpMethod.PUT, "/api/auth/**").permitAll()
                             .requestMatchers(org.springframework.http.HttpMethod.DELETE, "/api/auth/**").permitAll()
-                            
+
                             // 그 다음 일반적인 패턴들
                             .requestMatchers(PUBLIC_URLS).permitAll() // 공개 경로는 모두 허용
-                            
+
                             // 🎯 비회원도 접근 가능한 작품 조회 API
                             .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/artworks/*").permitAll()
                             .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/artworks/user/*").permitAll()
-                            
+
                             .anyRequest().authenticated(); // 그 외 모든 요청은 인증 필요
                 })
 
@@ -128,7 +131,7 @@ public class SecurityConfig {
         // TODO: 운영 환경에서는 실제 프론트엔드 도메인을 명시해야 합니다.
         // 예: "https://livingbrush.com"
         configuration.setAllowedOrigins(List.of(
-                "http://localhost:3000", 
+                "http://localhost:3000",
                 "http://127.0.0.1:3000",
                 "http://localhost:3001",
                 "http://localhost:8080",
