@@ -52,9 +52,11 @@ public class Notification {
     private Long relatedId;
     
     @Column(name = "is_read", nullable = false)
+    @Builder.Default
     private Boolean isRead = false;
     
     @Column(name = "is_enabled", nullable = false)
+    @Builder.Default
     private Boolean isEnabled = false; // V1 스키마 기본값과 일치
     
     @Column(name = "created_at")
