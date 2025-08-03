@@ -56,6 +56,7 @@ public class SecurityConfig {
 
             // --- 🎯 WebSocket (인증 제외) ---
             "/notifications", // WebSocket 알림 엔드포인트
+            "/notifications/**", // SockJS 하위 경로들 (websocket, xhr, xhr-streaming 등)
 
             // --- 🎯 Public APIs (비회원도 접근 가능) ---
             "/api/artworks/*/view", // 조회수 증가 (POST)
