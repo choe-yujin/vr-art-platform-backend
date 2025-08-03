@@ -350,12 +350,13 @@ public class ArtworkService {
     // ====================================================================
 
     /**
-     * 작품 정보 업데이트 (제목, 설명, 썸네일)
+     * 작품 정보 업데이트 (제목, 설명, 썸네일, 공개 상태)
      */
     @Transactional
     public ArtworkResponse updateArtwork(Long artworkId, ArtworkUpdateRequest request, Long userId) {
         log.info("=== 작품 정보 업데이트 시작 ===");
         log.info("작품 ID: {}, 사용자 ID: {}", artworkId, userId);
+        log.info("요청 데이터 - title: {}, isPublic: {}", request.getTitle(), request.getIsPublic());
 
         try {
             // 1. 작품 존재 및 소유권 확인
@@ -364,12 +365,30 @@ public class ArtworkService {
             // 2. 작품 정보 업데이트
             artwork.updateDetails(request.getTitle(), request.getDescription());
 
-            // 3. 썸네일 미디어 변경 (요청된 경우)
+            // 3. 공개 상태 업데이트 (요청된 경우)
+            if (request.hasNewVisibility()) {
+                log.info("공개 상태 변경 요청 - 현재: {}, 요청: {}", artwork.getVisibility(), request.getIsPublic());
+                if (request.getIsPublic()) {
+                    if (!artwork.canBePublic()) {
+                        throw new CustomException(ErrorCode.ARTWORK_CANNOT_BE_PUBLISHED);
+                    }
+                    artwork.publish();
+                    log.info("작품 {} 공개 전환 완료", artworkId);
+                } else {
+                    artwork.unpublish();
+                    log.info("작품 {} 비공개 전환 완료", artworkId);
+                    // 기존 QR이 있는 경우에만 비활성화 처리
+                    deactivateQrCodesIfExists(artworkId);
+                }
+            }
+
+            // 4. 썸네일 미디어 변경 (요청된 경우)
             if (request.hasNewThumbnail()) {
                 setThumbnailMediaAndLink(artwork, request.getThumbnailMediaId(), userId);
             }
 
             log.info("=== 작품 정보 업데이트 완료 ===");
+            log.info("최종 상태 - visibility: {}, isPublic: {}", artwork.getVisibility(), artwork.isPublic());
             // 실제 댓글 수 조회
             int commentCount = socialService.getCommentCount(artworkId);
             return ArtworkResponse.from(artwork, null, null, null, null, commentCount);
@@ -573,7 +592,7 @@ public class ArtworkService {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         Page<Artwork> artworks = artworkRepository.findByUser_UserIdOrderByCreatedAtDesc(userId, pageable);
-        
+
         // 각 작품의 댓글 수를 실제로 조회
         return artworks.map(artwork -> {
             int commentCount = socialService.getCommentCount(artwork.getArtworkId());
