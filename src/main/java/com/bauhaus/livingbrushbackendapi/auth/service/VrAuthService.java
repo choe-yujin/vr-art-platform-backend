@@ -190,7 +190,7 @@ public class VrAuthService {
             // AI 개발자 전용 영구 테스트 코드 체크 (Redis 없이 바로 로그인)
             if ("8888".equals(manualCode)) {
                 log.info("AI 개발자 영구 테스트 코드 사용 - Code: 8888");
-                return completeVrLogin("1", "영구 테스트 코드"); // 기본 사용자 ID 1로 로그인
+                return completeVrLogin("4", "영구 테스트 코드"); // 기본 사용자 ID 1로 로그인
             }
 
             String redisManualKey = "vr_manual:" + manualCode;
