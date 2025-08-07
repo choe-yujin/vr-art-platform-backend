@@ -2,6 +2,7 @@ package com.bauhaus.livingbrushbackendapi.artwork.service;
 
 import com.bauhaus.livingbrushbackendapi.artwork.dto.ArtworkCreateRequest;
 import com.bauhaus.livingbrushbackendapi.artwork.dto.VrArtworkCreateRequest;
+import com.bauhaus.livingbrushbackendapi.artwork.dto.GltfArtworkCreateRequest;
 import com.bauhaus.livingbrushbackendapi.artwork.dto.ArtworkListResponse;
 import com.bauhaus.livingbrushbackendapi.artwork.dto.ArtworkResponse;
 import com.bauhaus.livingbrushbackendapi.artwork.dto.ArtworkUpdateRequest;
@@ -153,6 +154,84 @@ public class ArtworkService {
             throw e;
         } catch (Exception e) {
             log.error("VR 작품 생성 중 예상치 못한 오류 발생", e);
+            throw new CustomException(ErrorCode.ARTWORK_CREATION_FAILED, e);
+        }
+    }
+
+    /**
+     * 🎯 AR 전용: GLTF 작품 업로드 (ZIP 파일)
+     *
+     * AR 앱에서 GLTF 파일과 sketch.bin 파일을 포함한 ZIP 파일을 업로드합니다.
+     * 제목과 설명은 자동 생성되며, 태그만 선택하면 됩니다.
+     */
+    @Transactional
+    public ArtworkResponse createGltfArtwork(Long userId, GltfArtworkCreateRequest gltfRequest, MultipartFile zipFile) {
+        log.info("=== GLTF 작품 생성 시작 ===");
+        log.info("사용자 ID: {}, 파일: {}, 태그 수: {}",
+                userId, zipFile.getOriginalFilename(),
+                gltfRequest.hasSelectedTags() ? gltfRequest.getTagIds().size() : 0);
+
+        try {
+            // 1. 파일 검증
+            validateZipFile(zipFile);
+
+            // 2. 사용자 존재 확인
+            User user = findUserById(userId);
+
+            // 2. 임시 제목으로 작품 엔티티 먼저 생성
+            Artwork artwork = Artwork.create(
+                    user,
+                    "temporary_title", // 임시 제목
+                    "placeholder", // 임시 GLTF URL
+                    gltfRequest.generateDefaultDescription(),
+                    null // AR에서는 가격 설정 없음
+            );
+
+            // 3. 작품 저장하여 ID 생성
+            Artwork savedArtwork = artworkRepository.save(artwork);
+            Long artworkId = savedArtwork.getArtworkId();
+            log.info("작품 저장 완료 - ID: {}", artworkId);
+
+            // 4. 실제 제목 생성 및 업데이트
+            String finalTitle = gltfRequest.generateDefaultTitle(userId, artworkId);
+            savedArtwork.updateDetails(finalTitle, null);
+            log.info("자동 생성된 제목: '{}'", finalTitle);
+
+            // 5. 고유한 ZIP 파일명 생성
+            String uniqueFileName = fileNameGenerator.generateArtworkFileName(
+                    zipFile.getOriginalFilename(), userId, String.valueOf(artworkId));
+            log.info("생성된 ZIP 파일명: {}", uniqueFileName);
+
+            // 6. ZIP 파일을 S3에 저장
+            FileStorageContext context = FileStorageContext.forArtworkGlb(userId, artworkId);
+            String gltfUrl = fileStorageService.saveWithContext(
+                    zipFile.getBytes(), uniqueFileName, context);
+            log.info("ZIP 파일 업로드 완료: {}", gltfUrl);
+
+            // 7. 작품에 실제 GLTF URL 업데이트
+            savedArtwork.updateGlbUrl(gltfUrl);
+
+            // 8. 🎯 첫 업로드 시 자동 승격 로직 (USER → ARTIST)
+            handleAutoPromotionIfFirstArtwork(user, finalTitle);
+
+            // 9. 썸네일 미디어 설정 및 연결 (제공된 경우)
+            if (gltfRequest.hasThumbnail()) {
+                setThumbnailMediaAndLink(savedArtwork, gltfRequest.getThumbnailMediaId(), userId);
+            }
+
+            // 10. 태그 저장 (선택된 경우)
+            if (gltfRequest.hasSelectedTags()) {
+                saveArtworkTags(savedArtwork, gltfRequest.getTagIds());
+            }
+
+            log.info("=== GLTF 작품 생성 완료 - 제목: '{}' ===", finalTitle);
+            return ArtworkResponse.from(savedArtwork, null, null, null, null, 0); // 새 작품이므로 댓글 수 0
+
+        } catch (CustomException e) {
+            log.error("GLTF 작품 생성 중 비즈니스 예외 발생: {}", e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("GLTF 작품 생성 중 예상치 못한 오류 발생", e);
             throw new CustomException(ErrorCode.ARTWORK_CREATION_FAILED, e);
         }
     }
@@ -576,6 +655,40 @@ public class ArtworkService {
         }
 
         return ArtworkResponse.from(artwork, qrImageUrl, profileImageUrl, bio, isLiked, commentCount);
+    }
+
+    /**
+     * GLTF 경로 조회 (AR 앱용)
+     * 특정 작품의 GLTF 파일 경로를 조회합니다. 공개 작품이거나 소유자만 접근 가능합니다.
+     */
+    public String getGltfPath(Long artworkId, Long requestUserId) {
+        log.info("GLTF 경로 조회 요청 - 작품 ID: {}, 요청자 ID: {}", artworkId, requestUserId);
+
+        Artwork artwork = artworkRepository.findById(artworkId)
+                .orElseThrow(() -> new CustomException(ErrorCode.ARTWORK_NOT_FOUND));
+
+        // 요청자 정보 조회 (비회원인 경우 null)
+        User requestUser = null;
+        if (requestUserId != null) {
+            requestUser = findUserById(requestUserId);
+        }
+
+        // 접근 권한 검증: 공개 작품이거나 소유자인 경우만 접근 허용
+        if (!artwork.isPublic()) {
+            // 비공개 작품은 소유자만 접근 가능
+            if (requestUser == null || !artwork.isOwnedBy(requestUser)) {
+                throw new CustomException(ErrorCode.FORBIDDEN_ACCESS_ARTWORK);
+            }
+        }
+
+        // GLTF URL 반환 (glbUrl 필드에 저장됨)
+        String gltfUrl = artwork.getGlbUrl();
+        if (gltfUrl == null || gltfUrl.isEmpty()) {
+            throw new CustomException(ErrorCode.ARTWORK_NOT_FOUND);
+        }
+
+        log.info("GLTF 경로 조회 완료 - 작품 ID: {}, 경로: {}", artworkId, gltfUrl);
+        return gltfUrl;
     }
 
     /**
@@ -1141,5 +1254,27 @@ public class ArtworkService {
             log.warn("댓글 상태 조회 중 오류 발생 (기본값 사용): {}", e.getMessage());
             return java.util.Set.of();
         }
+    }
+
+    /**
+     * ZIP 파일 검증
+     * GLTF 파일과 sketch.bin 파일이 포함되어 있는지 확인
+     */
+    private void validateZipFile(MultipartFile zipFile) {
+        if (zipFile == null || zipFile.isEmpty()) {
+            throw new CustomException(ErrorCode.ARTWORK_CREATION_FAILED);
+        }
+
+        String fileName = zipFile.getOriginalFilename();
+        if (fileName == null || !fileName.toLowerCase().endsWith(".zip")) {
+            throw new CustomException(ErrorCode.ARTWORK_CREATION_FAILED);
+        }
+
+        // 파일 크기 검증 (최대 100MB)
+        if (zipFile.getSize() > 100 * 1024 * 1024) {
+            throw new CustomException(ErrorCode.ARTWORK_CREATION_FAILED);
+        }
+
+        log.info("ZIP 파일 검증 완료 - 파일명: {}, 크기: {} bytes", fileName, zipFile.getSize());
     }
 }

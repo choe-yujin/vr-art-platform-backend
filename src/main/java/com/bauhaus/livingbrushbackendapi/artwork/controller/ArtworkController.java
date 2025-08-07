@@ -2,6 +2,7 @@ package com.bauhaus.livingbrushbackendapi.artwork.controller;
 
 import com.bauhaus.livingbrushbackendapi.artwork.dto.ArtworkCreateRequest;
 import com.bauhaus.livingbrushbackendapi.artwork.dto.VrArtworkCreateRequest;
+import com.bauhaus.livingbrushbackendapi.artwork.dto.GltfArtworkCreateRequest;
 import com.bauhaus.livingbrushbackendapi.artwork.dto.ArtworkListResponse;
 import com.bauhaus.livingbrushbackendapi.artwork.dto.ArtworkResponse;
 import com.bauhaus.livingbrushbackendapi.artwork.dto.ArtworkUpdateRequest;
@@ -79,6 +80,35 @@ public class ArtworkController {
                 .build();
 
         ArtworkResponse response = artworkService.createVrArtwork(userId, vrRequest, glbFile);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+            summary = "GLTF 작품 업로드 (ZIP 파일)",
+            description = "AR 앱에서 GLTF 파일과 sketch.bin 파일을 포함한 ZIP 파일과 최소 메타데이터로 작품을 생성합니다. 제목은 자동 생성됩니다.",
+            security = @SecurityRequirement(name = "JWT")
+    )
+    @PostMapping(value = "/gltf-upload", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ArtworkResponse> createGltfArtwork(
+            @Parameter(description = "사용자 ID", required = true) @RequestHeader("X-User-Id") Long userId,
+            @Parameter(description = "GLTF 파일과 sketch.bin을 포함한 ZIP 파일", required = true) @RequestParam("zipFile") MultipartFile zipFile,
+            @Parameter(description = "태그 ID 목록 (최대 5개, 선택사항)") @RequestParam(required = false) List<Long> tagIds,
+            @Parameter(description = "썸네일 미디어 ID (선택사항)") @RequestParam(required = false) Long thumbnailMediaId,
+            @Parameter(description = "커스텀 제목 (선택사항)") @RequestParam(required = false) String customTitle,
+            @Parameter(description = "커스텀 설명 (선택사항)") @RequestParam(required = false) String customDescription
+    ) {
+        log.info("GLTF 작품 업로드 요청 - 사용자: {}, 파일: {}, 태그 수: {}",
+                userId, zipFile.getOriginalFilename(), tagIds != null ? tagIds.size() : 0);
+
+        // GLTF 요청 DTO 생성
+        GltfArtworkCreateRequest gltfRequest = GltfArtworkCreateRequest.builder()
+                .tagIds(tagIds)
+                .thumbnailMediaId(thumbnailMediaId)
+                .customTitle(customTitle)
+                .customDescription(customDescription)
+                .build();
+
+        ArtworkResponse response = artworkService.createGltfArtwork(userId, gltfRequest, zipFile);
         return ResponseEntity.ok(response);
     }
 
@@ -232,6 +262,24 @@ public class ArtworkController {
 
         ArtworkResponse response = artworkService.getArtworkById(artworkId, requestUserId);
         return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+            summary = "GLTF 경로 조회",
+            description = "특정 작품의 GLTF 파일 경로를 조회합니다. AR 앱에서 사용됩니다."
+    )
+    @GetMapping("/gltf/{artworkId}")
+    public ResponseEntity<String> getGltfPath(
+            @Parameter(description = "작품 ID", required = true) @PathVariable Long artworkId,
+            Authentication authentication
+    ) {
+        // JWT 토큰에서 사용자 ID 추출
+        Long requestUserId = authentication != null ? jwtTokenProvider.getUserIdFromAuthentication(authentication) : null;
+        log.info("GLTF 경로 조회 요청 - 작품 ID: {}, 요청자 ID: {}", artworkId,
+                requestUserId != null ? requestUserId : "비회원");
+
+        String gltfPath = artworkService.getGltfPath(artworkId, requestUserId);
+        return ResponseEntity.ok(gltfPath);
     }
 
     @Operation(
